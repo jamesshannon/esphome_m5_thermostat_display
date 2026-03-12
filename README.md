@@ -44,6 +44,7 @@ Home Assistant service calls when users adjust temperature or cycle modes.
 - `thermostat.yaml` is the user entrypoint for flashing the device.
 - `components/...` is the actual runtime component implementation.
 - `tests/` should stay clean, fast, and independent of ESPHome headers.
+- `thermostat-debug.yaml` is a local debug-friendly config with `DEBUG_TEST`.
 
 ## Usage
 
@@ -105,6 +106,81 @@ m5dial_thermostat:
   # idle_timeout: 30s
   # enable_sounds: true
   # comms_timeout: 30s
+```
+
+If you hit an error like:
+
+```
+Error reading file secrets.yaml: [Errno 2] No such file or directory
+```
+
+use the debug config:
+
+```bash
+esphome run thermostat-debug.yaml --device /dev/<your-usb-serial-port>
+```
+
+`thermostat-debug.yaml`:
+- hardcodes Wi-Fi credentials directly (no `!secret` block)
+- enables `DEBUG_TEST` at build time so it works without Home Assistant
+  subscriptions
+- keeps the same hardware/component wiring
+
+```yaml
+---
+esphome:
+  name: thermostat-dial-debug
+  friendly_name: Thermostat Debug
+
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: esp-idf
+  platformio_options:
+    build_flags:
+      - -DDEBUG_TEST
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+api:
+
+wifi:
+  ssid: "YOUR_WIFI_SSID"
+  password: "YOUR_WIFI_PASSWORD"
+
+ota:
+  - platform: esphome
+
+spi:
+  mosi_pin: GPIO5
+  clk_pin: GPIO6
+
+display:
+  - platform: ili9xxx
+    id: m5dial_display
+    model: GC9A01A
+    cs_pin: GPIO7
+    dc_pin: GPIO4
+    reset_pin: GPIO8
+    invert_colors: true
+    update_interval: never
+
+external_components:
+  - source:
+      type: local
+      path: components
+
+m5dial_thermostat:
+  entity_id: climate.my_thermostat
+  display_id: m5dial_display
+  active_brightness: 255
+  idle_brightness: 50
+  idle_timeout: 30s
+  enable_sounds: true
+  comms_timeout: 30s
 ```
 
 ## Configuration options
