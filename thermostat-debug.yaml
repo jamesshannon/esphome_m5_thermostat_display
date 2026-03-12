@@ -24,6 +24,7 @@ logger:
 wifi:
   ssid: "YOUR_WIFI_SSID"
   password: "YOUR_WIFI_PASSWORD"
+  enable_on_boot: false
 
 ota:
   - platform: esphome

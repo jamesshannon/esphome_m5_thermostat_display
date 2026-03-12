@@ -30,6 +30,11 @@ constexpr char kNoteRotateDown[] = "down:d=64,o=4,b=255:c";
 constexpr char kNoteClick[] = "click:d=64,o=5,b=255:c,p,c";
 
 constexpr uint8_t kPinModeInputPullup = static_cast<uint8_t>(GPIO_MODE_INPUT);
+constexpr gpio_num_t kBacklightPin = GPIO_NUM_9;
+constexpr ledc_mode_t kBacklightMode = LEDC_LOW_SPEED_MODE;
+constexpr ledc_timer_t kBacklightTimer = LEDC_TIMER_2;
+constexpr ledc_channel_t kBacklightChannel = LEDC_CHANNEL_2;
+constexpr ledc_timer_bit_t kBacklightResolution = LEDC_TIMER_10_BIT;
 constexpr gpio_num_t kBuzzerPin = GPIO_NUM_3;
 constexpr ledc_mode_t kBuzzerMode = LEDC_LOW_SPEED_MODE;
 constexpr ledc_timer_t kBuzzerTimer = LEDC_TIMER_1;
@@ -181,12 +186,49 @@ void M5DialThermostat::setup_input_pins_() {
 }
 
 void M5DialThermostat::set_backlight_level_(uint8_t level) {
+  this->set_backlight_level_direct_(level);
   if (this->backlight_ == nullptr) {
     ESP_LOGW(TAG, "Backlight output is null; skipping level=%u", level);
     return;
   }
   ESP_LOGD(TAG, "Backlight level set to %u", level);
   this->backlight_->set_level(level / 255.0f);
+}
+
+void M5DialThermostat::setup_backlight_() {
+  ledc_timer_config_t timer_conf{};
+  timer_conf.speed_mode = kBacklightMode;
+  timer_conf.timer_num = kBacklightTimer;
+  timer_conf.duty_resolution = kBacklightResolution;
+  timer_conf.freq_hz = 5000;
+  timer_conf.clk_cfg = LEDC_AUTO_CLK;
+  if (ledc_timer_config(&timer_conf) != ESP_OK) {
+    this->backlight_ready_ = false;
+    return;
+  }
+
+  ledc_channel_config_t channel_conf{};
+  channel_conf.gpio_num = kBacklightPin;
+  channel_conf.speed_mode = kBacklightMode;
+  channel_conf.channel = kBacklightChannel;
+  channel_conf.intr_type = LEDC_INTR_DISABLE;
+  channel_conf.timer_sel = kBacklightTimer;
+  channel_conf.duty = 0;
+  channel_conf.hpoint = 0;
+  if (ledc_channel_config(&channel_conf) != ESP_OK) {
+    this->backlight_ready_ = false;
+    return;
+  }
+  this->backlight_ready_ = true;
+}
+
+void M5DialThermostat::set_backlight_level_direct_(uint8_t level) {
+  if (!this->backlight_ready_) {
+    return;
+  }
+  const uint32_t duty = (static_cast<uint32_t>(level) * 1023U) / 255U;
+  ledc_set_duty(kBacklightMode, kBacklightChannel, duty);
+  ledc_update_duty(kBacklightMode, kBacklightChannel);
 }
 
 void M5DialThermostat::set_display_brightness_(bool active) {
@@ -665,6 +707,7 @@ void M5DialThermostat::setup() {
   }
 
   this->setup_input_pins_();
+  this->setup_backlight_();
   this->setup_buzzer_();
   this->set_writer_();
   this->set_display_brightness_(true);

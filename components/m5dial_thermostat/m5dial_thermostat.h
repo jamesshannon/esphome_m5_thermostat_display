@@ -63,7 +63,11 @@ class M5DialThermostat : public Component, public api::CustomAPIDevice {
   void dump_config() override;
 
   float get_setup_priority() const override {
+#ifdef DEBUG_TEST
+    return setup_priority::HARDWARE;
+#else
     return setup_priority::AFTER_CONNECTION;
+#endif
   }
 
   static HvacMode parse_hvac_mode(const char *state);
@@ -89,6 +93,8 @@ class M5DialThermostat : public Component, public api::CustomAPIDevice {
   void subscribe_ha_state_();
   void set_writer_();
   void render_(display::Display &it);
+  void setup_backlight_();
+  void set_backlight_level_direct_(uint8_t level);
   void setup_buzzer_();
   void start_buzzer_tone_(uint32_t frequency_hz);
   void stop_buzzer_tone_();
@@ -155,6 +161,7 @@ class M5DialThermostat : public Component, public api::CustomAPIDevice {
   uint8_t idle_brightness_{50};
   uint32_t idle_timeout_ms_{30000};
   uint32_t comms_timeout_ms_{30000};
+  bool backlight_ready_{false};
   bool buzzer_ready_{false};
 };
 
