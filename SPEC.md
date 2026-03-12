@@ -365,22 +365,61 @@ component stores the pointer as `this->backlight_` and calls
 
 ## Buzzer / Sounds
 
-The `__init__.py` auto-creates a LEDC output on GPIO3 and an
-RTTTL component wired to it. If `this->enable_sounds_` is false,
-skip all `play()` calls.
+The `__init__.py` auto-creates a LEDC output on GPIO3 (buzzer).
+Tones are generated directly via `ledc_set_freq` / `ledc_set_duty`
+(no RTTTL component needed). If `this->enable_sounds_` is false,
+skip all tone calls.
 
-Three tones:
-- **Rotary up:** `"up:d=64,o=6,b=255:c"`
-- **Rotary down:** `"down:d=64,o=4,b=255:c"`
-- **Button click:** `"click:d=64,o=5,b=255:c,p,c"`
+Three tones (based on M5Dial reference firmware):
+- **Rotary up (CW):** 6000 Hz, 20 ms
+- **Rotary down (CCW):** 7000 Hz, 20 ms
+- **Button click:** 2000 Hz, 20 ms
+
+Higher frequencies (6–7 kHz) are crisp on piezo buzzers rather
+than harsh. Lower frequencies (1–2 kHz) resonate inside the
+enclosure and sound buzzy/loud.
+
+**Volume:** Use 10-bit PWM resolution with duty cycle ~128/1023
+(≈12.5%). This is significantly quieter than 50% duty while still
+audible. Raise to ~256 if the buzzer is inaudible in practice.
+
+Stop the tone after the duration using `set_timeout("buzzer_off", …)`.
 
 ---
 
 ## Rotary Encoder (Direct GPIO)
 
 GPIO40 (pin A), GPIO41 (pin B). Handled directly in C++ using
-GPIO reads in `loop()` or ISR-based quadrature decoding. No
+GPIO reads in `loop()` with a 4-state quadrature table. No
 separate ESPHome `rotary_encoder` component needed.
+
+### Detent-level debouncing
+
+A physical detent crossing on the M5 Dial encoder produces
+multiple quadrature state transitions. To prevent a single detent
+from registering multiple ticks, use an **accumulator**:
+
+```cpp
+// In on_encoder_changed_():
+this->encoder_accumulator_ += delta;  // raw quadrature delta
+
+// One tick per 2 raw counts (half-quadrature equivalent,
+// matching M5Dial reference firmware: attachHalfQuad() + /2).
+while (this->encoder_accumulator_ >= kEncoderCountsPerTick) {
+  this->on_encoder_tick_(+1);
+  this->encoder_accumulator_ -= kEncoderCountsPerTick;
+}
+while (this->encoder_accumulator_ <= -kEncoderCountsPerTick) {
+  this->on_encoder_tick_(-1);
+  this->encoder_accumulator_ += kEncoderCountsPerTick;
+}
+```
+
+`kEncoderCountsPerTick = 2` matches the reference firmware's
+half-quadrature behavior where each mechanical detent produces
+exactly one tick. Remove the millisecond-based time debounce
+(`kEncoderDebounceMs`) -- the count threshold makes it redundant
+and it can interfere with fast turning.
 
 On each tick:
 1. If `!this->comms_ok_` or `isnan(this->target_temp_)`: return

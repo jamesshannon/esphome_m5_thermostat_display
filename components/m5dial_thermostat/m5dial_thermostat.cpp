@@ -40,7 +40,9 @@ constexpr ledc_mode_t kBuzzerMode = LEDC_LOW_SPEED_MODE;
 constexpr ledc_timer_t kBuzzerTimer = LEDC_TIMER_1;
 constexpr ledc_channel_t kBuzzerChannel = LEDC_CHANNEL_1;
 constexpr ledc_timer_bit_t kBuzzerResolution = LEDC_TIMER_10_BIT;
-constexpr uint32_t kBuzzerDuty = 512;
+// ~12.5% duty cycle (128/1023) -- quieter than 50% while audible.
+// Raise to 256 if inaudible in practice.
+constexpr uint32_t kBuzzerDuty = 128;
 
 inline bool is_mode_separator(char c) {
   return !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
@@ -297,14 +299,14 @@ void M5DialThermostat::play_sound_(const char *tone) {
     return;
   }
 
-  uint32_t frequency_hz = 1800;
-  uint32_t duration_ms = 45;
+  // Frequencies from M5Dial reference firmware: high frequencies
+  // (6-7 kHz) are crisp on piezo; low frequencies (1-2 kHz) buzz.
+  uint32_t frequency_hz = 2000;  // button click default
+  uint32_t duration_ms = 20;
   if (std::strcmp(tone, kNoteRotateUp) == 0) {
-    frequency_hz = 2200;
-    duration_ms = 35;
+    frequency_hz = 6000;
   } else if (std::strcmp(tone, kNoteRotateDown) == 0) {
-    frequency_hz = 1400;
-    duration_ms = 35;
+    frequency_hz = 7000;
   }
 
   this->start_buzzer_tone_(frequency_hz);
@@ -578,11 +580,11 @@ void M5DialThermostat::on_encoder_tick_(int direction) {
 }
 
 void M5DialThermostat::on_encoder_changed_(int new_state) {
-  if (new_state == this->prev_encoder_state_) {
+  const int next = new_state & 0x03;
+  if (next == static_cast<int>(this->prev_encoder_state_)) {
     return;
   }
 
-  const int next = new_state & 0x03;
   const int8_t delta =
       kEncoderTable[this->prev_encoder_state_][next];
   this->prev_encoder_state_ = static_cast<uint8_t>(next);
@@ -591,12 +593,18 @@ void M5DialThermostat::on_encoder_changed_(int new_state) {
     return;
   }
 
-  const uint32_t now = millis();
-  if (now - this->last_encoder_ms_ < kEncoderDebounceMs) {
-    return;
+  // Accumulate raw counts; fire one tick per kEncoderCountsPerTick
+  // counts so a single mechanical detent produces exactly one tick
+  // (half-quadrature equivalent, per M5Dial reference firmware).
+  this->encoder_accumulator_ += delta;
+  while (this->encoder_accumulator_ >= kEncoderCountsPerTick) {
+    this->on_encoder_tick_(+1);
+    this->encoder_accumulator_ -= kEncoderCountsPerTick;
   }
-  this->last_encoder_ms_ = now;
-  this->on_encoder_tick_(static_cast<int>(delta));
+  while (this->encoder_accumulator_ <= -kEncoderCountsPerTick) {
+    this->on_encoder_tick_(-1);
+    this->encoder_accumulator_ += kEncoderCountsPerTick;
+  }
 }
 
 void M5DialThermostat::on_mode_button_() {

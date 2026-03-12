@@ -41,7 +41,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(): cv.declare_id(M5DialThermostat),
         cv.Required(CONF_ENTITY_ID): cv.string,
         cv.Required(CONF_DISPLAY_ID): cv.use_id(display.Display),
-        cv.Optional(CONF_ACTIVE_BRIGHTNESS, default=255): cv.int_range(min=0, max=255),
+        cv.Optional(CONF_ACTIVE_BRIGHTNESS, default=180): cv.int_range(min=0, max=255),
         cv.Optional(CONF_IDLE_BRIGHTNESS, default=50): cv.int_range(min=0, max=255),
         cv.Optional(CONF_IDLE_TIMEOUT, default="30s"): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_ENABLE_SOUNDS, default=True): cv.boolean,

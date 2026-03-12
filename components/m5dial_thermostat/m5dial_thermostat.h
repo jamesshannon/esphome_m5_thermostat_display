@@ -111,7 +111,9 @@ class M5DialThermostat : public Component, public api::CustomAPIDevice {
   static constexpr uint8_t kButtonPin = 42;
   static constexpr uint8_t kHoldPin = 46;
 
-  static constexpr uint16_t kEncoderDebounceMs = 40;
+  // Number of raw quadrature counts required per tick (half-quad
+  // equivalent): each mechanical detent produces ~2 counts.
+  static constexpr int8_t kEncoderCountsPerTick = 2;
   static constexpr uint16_t kButtonDebounceMs = 60;
   static constexpr uint16_t kSetpointDebounceMs = 500;
 
@@ -151,10 +153,12 @@ class M5DialThermostat : public Component, public api::CustomAPIDevice {
 
   uint32_t last_ha_update_{0};
   uint32_t last_interaction_{0};
-  uint32_t last_encoder_ms_{0};
   uint32_t last_button_ms_{0};
 
   uint8_t prev_encoder_state_{0};
+  // Accumulates raw quadrature deltas; fires a tick every
+  // kEncoderCountsPerTick counts to align with detents.
+  int8_t encoder_accumulator_{0};
   int prev_button_state_{1};
 
   uint8_t active_brightness_{255};
