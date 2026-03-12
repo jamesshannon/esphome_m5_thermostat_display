@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <driver/gpio.h>
+#include <driver/ledc.h>
 
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
@@ -29,6 +30,12 @@ constexpr char kNoteRotateDown[] = "down:d=64,o=4,b=255:c";
 constexpr char kNoteClick[] = "click:d=64,o=5,b=255:c,p,c";
 
 constexpr uint8_t kPinModeInputPullup = static_cast<uint8_t>(GPIO_MODE_INPUT);
+constexpr gpio_num_t kBuzzerPin = GPIO_NUM_3;
+constexpr ledc_mode_t kBuzzerMode = LEDC_LOW_SPEED_MODE;
+constexpr ledc_timer_t kBuzzerTimer = LEDC_TIMER_1;
+constexpr ledc_channel_t kBuzzerChannel = LEDC_CHANNEL_1;
+constexpr ledc_timer_bit_t kBuzzerResolution = LEDC_TIMER_10_BIT;
+constexpr uint32_t kBuzzerDuty = 512;
 
 inline bool is_mode_separator(char c) {
   return !((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
@@ -186,11 +193,69 @@ void M5DialThermostat::set_display_brightness_(bool active) {
   this->set_backlight_level_(level);
 }
 
-void M5DialThermostat::play_sound_(const char *tone) const {
-  if (!this->enable_sounds_ || tone == nullptr) {
+void M5DialThermostat::setup_buzzer_() {
+  ledc_timer_config_t timer_conf{};
+  timer_conf.speed_mode = kBuzzerMode;
+  timer_conf.timer_num = kBuzzerTimer;
+  timer_conf.duty_resolution = kBuzzerResolution;
+  timer_conf.freq_hz = 1800;
+  timer_conf.clk_cfg = LEDC_AUTO_CLK;
+  if (ledc_timer_config(&timer_conf) != ESP_OK) {
+    this->buzzer_ready_ = false;
     return;
   }
-  // UNVERIFIED: RTTTL integration is disabled for debug-only builds.
+
+  ledc_channel_config_t channel_conf{};
+  channel_conf.gpio_num = kBuzzerPin;
+  channel_conf.speed_mode = kBuzzerMode;
+  channel_conf.channel = kBuzzerChannel;
+  channel_conf.intr_type = LEDC_INTR_DISABLE;
+  channel_conf.timer_sel = kBuzzerTimer;
+  channel_conf.duty = 0;
+  channel_conf.hpoint = 0;
+  if (ledc_channel_config(&channel_conf) != ESP_OK) {
+    this->buzzer_ready_ = false;
+    return;
+  }
+
+  this->buzzer_ready_ = true;
+}
+
+void M5DialThermostat::start_buzzer_tone_(uint32_t frequency_hz) {
+  if (!this->buzzer_ready_) {
+    return;
+  }
+  ledc_set_freq(kBuzzerMode, kBuzzerTimer, frequency_hz);
+  ledc_set_duty(kBuzzerMode, kBuzzerChannel, kBuzzerDuty);
+  ledc_update_duty(kBuzzerMode, kBuzzerChannel);
+}
+
+void M5DialThermostat::stop_buzzer_tone_() {
+  if (!this->buzzer_ready_) {
+    return;
+  }
+  ledc_set_duty(kBuzzerMode, kBuzzerChannel, 0);
+  ledc_update_duty(kBuzzerMode, kBuzzerChannel);
+}
+
+void M5DialThermostat::play_sound_(const char *tone) {
+  if (!this->enable_sounds_ || tone == nullptr || !this->buzzer_ready_) {
+    return;
+  }
+
+  uint32_t frequency_hz = 1800;
+  uint32_t duration_ms = 45;
+  if (std::strcmp(tone, kNoteRotateUp) == 0) {
+    frequency_hz = 2200;
+    duration_ms = 35;
+  } else if (std::strcmp(tone, kNoteRotateDown) == 0) {
+    frequency_hz = 1400;
+    duration_ms = 35;
+  }
+
+  this->start_buzzer_tone_(frequency_hz);
+  this->set_timeout("buzzer_off", duration_ms,
+                    [this]() { this->stop_buzzer_tone_(); });
 }
 
 bool M5DialThermostat::parse_float_(StringRef value, float *out) const {
@@ -592,6 +657,7 @@ void M5DialThermostat::setup() {
   }
 
   this->setup_input_pins_();
+  this->setup_buzzer_();
   this->set_writer_();
   this->set_display_brightness_(true);
   this->needs_redraw_ = true;
@@ -621,10 +687,12 @@ void M5DialThermostat::setup() {
 
 void M5DialThermostat::loop() {
   const uint32_t now = millis();
+#ifndef DEBUG_TEST
   if (this->comms_ok_ && now - this->last_ha_update_ > this->comms_timeout_ms_) {
     this->comms_ok_ = false;
     this->needs_redraw_ = true;
   }
+#endif
 
 #ifndef DEBUG_TEST
   const bool allow_user_input = this->comms_ok_;

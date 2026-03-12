@@ -89,13 +89,16 @@ class M5DialThermostat : public Component, public api::CustomAPIDevice {
   void subscribe_ha_state_();
   void set_writer_();
   void render_(display::Display &it);
+  void setup_buzzer_();
+  void start_buzzer_tone_(uint32_t frequency_hz);
+  void stop_buzzer_tone_();
   void set_display_brightness_(bool active);
   void set_backlight_level_(uint8_t level);
   void send_setpoint_to_ha_();
   void send_mode_to_ha_(HvacMode mode);
   bool parse_float_(StringRef value, float *out) const;
   void parse_supported_modes_(const char *value);
-  void play_sound_(const char *tone) const;
+  void play_sound_(const char *tone);
 
   static constexpr uint8_t kEncoderPinA = 40;
   static constexpr uint8_t kEncoderPinB = 41;
@@ -152,6 +155,7 @@ class M5DialThermostat : public Component, public api::CustomAPIDevice {
   uint8_t idle_brightness_{50};
   uint32_t idle_timeout_ms_{30000};
   uint32_t comms_timeout_ms_{30000};
+  bool buzzer_ready_{false};
 };
 
 }  // namespace m5dial_thermostat

@@ -392,6 +392,11 @@ void render_thermostat(
 
 void render_no_connection(display::Display &d, const ThermostatFonts &fonts) {
   d.fill(Color(0, 0, 0));
+  draw_arc_segment(d, kDefaultCenterX, kDefaultCenterY, kDefaultInnerRadius,
+                   kDefaultOuterRadius, kArcStartAngleDeg, kArcEndAngleDeg,
+                   kColorTrack);
+  draw_arc_segment(d, kDefaultCenterX, kDefaultCenterY, kDefaultInnerRadius,
+                   kDefaultOuterRadius, 180.0f, 360.0f, kColorHeatDark);
   draw_text(d, kDefaultCenterX, 58, fonts.error, "?", kColorText);
   draw_text(d, kDefaultCenterX, 150, fonts.mode, "No connection", kColorTextMuted);
 }
