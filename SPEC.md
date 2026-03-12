@@ -382,8 +382,8 @@ Tones are generated directly via `ledc_set_freq` / `ledc_set_duty`
 skip all tone calls.
 
 Three tones (based on M5Dial reference firmware):
-- **Rotary up (CW):** 6000 Hz, 20 ms
-- **Rotary down (CCW):** 7000 Hz, 20 ms
+- **Rotary up (CW):** 6000 Hz, 8 ms
+- **Rotary down (CCW):** 7000 Hz, 8 ms
 - **Button click:** 2000 Hz, 20 ms
 
 Higher frequencies (6–7 kHz) are crisp on piezo buzzers rather
@@ -394,7 +394,11 @@ enclosure and sound buzzy/loud.
 (≈12.5%). This is significantly quieter than 50% duty while still
 audible. Raise to ~256 if the buzzer is inaudible in practice.
 
-Stop the tone after the duration using `set_timeout("buzzer_off", …)`.
+For rotary ticks, force a short off->on retrigger on every detent
+before starting the tone. This preserves distinct clicks during
+fast twists instead of smearing into one long buzz.
+Stop the tone after the duration using
+`set_timeout("buzzer_off", …)`.
 
 ---
 

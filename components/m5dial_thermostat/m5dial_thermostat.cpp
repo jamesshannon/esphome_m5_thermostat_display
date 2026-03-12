@@ -31,6 +31,8 @@ namespace
   constexpr char kNoteRotateUp[] = "up:d=64,o=6,b=255:c";
   constexpr char kNoteRotateDown[] = "down:d=64,o=4,b=255:c";
   constexpr char kNoteClick[] = "click:d=64,o=5,b=255:c,p,c";
+  constexpr uint32_t kRotateToneDurationMs = 8;
+  constexpr uint32_t kClickToneDurationMs = 20;
 
   constexpr uint8_t kPinModeInputPullup = static_cast<uint8_t>(GPIO_MODE_INPUT);
   constexpr gpio_num_t kBacklightPin = GPIO_NUM_9;
@@ -379,16 +381,20 @@ namespace esphome
       // Frequencies from M5Dial reference firmware: high frequencies
       // (6-7 kHz) are crisp on piezo; low frequencies (1-2 kHz) buzz.
       uint32_t frequency_hz = 2000; // button click default
-      uint32_t duration_ms = 20;
+      uint32_t duration_ms = kClickToneDurationMs;
       if (std::strcmp(tone, kNoteRotateUp) == 0)
       {
         frequency_hz = 6000;
+        duration_ms = kRotateToneDurationMs;
       }
       else if (std::strcmp(tone, kNoteRotateDown) == 0)
       {
         frequency_hz = 7000;
+        duration_ms = kRotateToneDurationMs;
       }
 
+      // Force an off->on edge so rapid encoder ticks sound discrete.
+      this->stop_buzzer_tone_();
       this->start_buzzer_tone_(frequency_hz);
       this->set_timeout("buzzer_off", duration_ms,
                         [this]()
