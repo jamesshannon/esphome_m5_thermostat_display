@@ -1,3 +1,4 @@
+---
 esphome:
   name: thermostat-dial
   friendly_name: Thermostat
