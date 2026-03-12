@@ -1,8 +1,9 @@
-#define ESPHOME_STUBS
 #include "components/m5dial_thermostat/thermostat_ui.h"
 
 #include <cassert>
 #include <cmath>
+
+using namespace esphome::m5dial_thermostat;
 
 static void test_clamp_and_nan() {
   assert(std::isnan(clamp_setpoint(NAN, 10.0f, 20.0f)));

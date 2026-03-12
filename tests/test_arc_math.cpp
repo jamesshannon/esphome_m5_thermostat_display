@@ -1,8 +1,9 @@
-#define ESPHOME_STUBS
 #include "components/m5dial_thermostat/thermostat_ui.h"
 
 #include <cassert>
 #include <cmath>
+
+using namespace esphome::m5dial_thermostat;
 
 static void test_temp_to_angle() {
   assert(std::fabs(temp_to_angle(15.0f, 15.0f, 30.0f) - 120.0f) < 1e-4f);

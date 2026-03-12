@@ -1,7 +1,8 @@
-#define ESPHOME_STUBS
 #include "components/m5dial_thermostat/thermostat_ui.h"
 
 #include <cassert>
+
+using namespace esphome::m5dial_thermostat;
 
 int main() {
   assert(celsius_to_fahrenheit(0.0f) == 32.0f);

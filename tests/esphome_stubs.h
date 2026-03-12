@@ -12,14 +12,15 @@ struct Color {
   uint8_t blue;
   uint8_t alpha;
 
-  Color() : red(0), green(0), blue(0), alpha(255) {}
-  Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)
+  constexpr Color() : red(0), green(0), blue(0), alpha(255) {}
+  constexpr Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)
       : red(r), green(g), blue(b), alpha(a) {}
 
   bool operator==(const Color &rhs) const {
     return red == rhs.red && green == rhs.green && blue == rhs.blue &&
            alpha == rhs.alpha;
   }
+  bool operator!=(const Color &rhs) const { return !(*this == rhs); }
 };
 
 struct StringRef {
