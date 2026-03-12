@@ -22,6 +22,12 @@ user-facing `thermostat.yaml` includes standard ESPHome boilerplate
 plus M5 Dial hardware config (SPI, display) and the component
 declaration.
 
+--
+
+## Git
+Commit to the git repo with a summary commit message after completing
+every logical chunk of code.
+
 ---
 
 ## Architecture

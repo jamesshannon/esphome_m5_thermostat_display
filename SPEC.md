@@ -9,6 +9,11 @@ standards, and workflow.
 
 ---
 
+## API, Example Code, and Docs
+The ESPHome source code is located at `../references/esphome`. ESPHome docs
+are located at `../references/esphome-docs/src/content/docs`. Use these for
+reference, best practices, and compiling.
+
 ## Device Hardware
 
 - **MCU:** ESP32-S3 (M5StampS3)
@@ -643,6 +648,16 @@ If flash becomes tight, per-size glyph sets are possible (72px
 needs only `?` and space).
 
 ---
+
+## Device Testing Without Homeassistant
+
+Create a `DEBUG_TEST` mode that allows the device to operate without
+connecting to wifi or communicating with the HomeAssistant API for bench
+testing without a nearby HomeAssitant instance.
+`current_temperature` should be hardcoded to 25c and all other functionality
+should work (cycling through the mode, idle brightness, setpoint, sound, etc).
+
+--
 
 ## Out of Scope
 
