@@ -182,8 +182,10 @@ void M5DialThermostat::setup_input_pins_() {
 
 void M5DialThermostat::set_backlight_level_(uint8_t level) {
   if (this->backlight_ == nullptr) {
+    ESP_LOGW(TAG, "Backlight output is null; skipping level=%u", level);
     return;
   }
+  ESP_LOGD(TAG, "Backlight level set to %u", level);
   this->backlight_->set_level(level / 255.0f);
 }
 
@@ -612,8 +614,14 @@ void M5DialThermostat::subscribe_ha_state_() {
 
 void M5DialThermostat::render_(display::Display &it) {
   if (this->display_ == nullptr) {
+    ESP_LOGW(TAG, "Render skipped: display is null");
     return;
   }
+
+  ESP_LOGD(TAG, "Render: comms_ok=%s current=%.2f setpoint=%.2f mode=%d action=%d",
+           this->comms_ok_ ? "true" : "false", this->current_temp_,
+           this->local_setpoint_, static_cast<int>(this->hvac_mode_),
+           static_cast<int>(this->hvac_action_));
 
   ThermostatState state{};
   state.current_temp = this->current_temp_;
@@ -663,6 +671,8 @@ void M5DialThermostat::setup() {
   this->needs_redraw_ = true;
   this->last_interaction_ = millis();
   this->last_ha_update_ = millis();
+  ESP_LOGI(TAG, "Setup complete: display=%p backlight=%p buzzer_ready=%s",
+           this->display_, this->backlight_, this->buzzer_ready_ ? "yes" : "no");
 
 #ifndef DEBUG_TEST
   this->subscribe_ha_state_();
@@ -719,6 +729,7 @@ void M5DialThermostat::loop() {
   }
 
   if (this->needs_redraw_ && this->display_ != nullptr) {
+    ESP_LOGD(TAG, "Display update triggered");
     this->display_->update();
     this->needs_redraw_ = false;
   }

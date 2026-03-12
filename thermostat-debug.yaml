@@ -2,21 +2,24 @@
 esphome:
   name: thermostat-dial-debug
   friendly_name: Thermostat Debug
+  platformio_options:
+    build_flags:
+      - -DDEBUG_TEST
 
 esp32:
   board: esp32-s3-devkitc-1
   variant: esp32s3
   framework:
     type: esp-idf
-  platformio_options:
-    build_flags:
-      - -DDEBUG_TEST
 
 psram:
   mode: octal
   speed: 80MHz
 
 api:
+
+logger:
+  level: DEBUG
 
 wifi:
   ssid: "YOUR_WIFI_SSID"
