@@ -163,6 +163,7 @@ class M5DialThermostat : public Component, public api::CustomAPIDevice {
   uint32_t comms_timeout_ms_{30000};
   bool backlight_ready_{false};
   bool buzzer_ready_{false};
+  int16_t last_backlight_level_{-1};
 };
 
 }  // namespace m5dial_thermostat

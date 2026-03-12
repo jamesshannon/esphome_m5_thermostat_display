@@ -186,7 +186,17 @@ void M5DialThermostat::setup_input_pins_() {
 }
 
 void M5DialThermostat::set_backlight_level_(uint8_t level) {
+  if (this->last_backlight_level_ == static_cast<int16_t>(level)) {
+    return;
+  }
+  this->last_backlight_level_ = static_cast<int16_t>(level);
+
   this->set_backlight_level_direct_(level);
+#ifdef DEBUG_TEST
+  ESP_LOGD(TAG, "Backlight level set to %u", level);
+  return;
+#endif
+
   if (this->backlight_ == nullptr) {
     ESP_LOGW(TAG, "Backlight output is null; skipping level=%u", level);
     return;
