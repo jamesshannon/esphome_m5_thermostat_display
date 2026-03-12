@@ -37,6 +37,24 @@ display:
     invert_colors: true
     update_interval: never  # component controls redraws
 
+font:
+  - file: "gfonts://Roboto"
+    id: font_mode
+    size: 16
+    bpp: 4
+  - file: "gfonts://Roboto"
+    id: font_setpoint
+    size: 20
+    bpp: 4
+  - file: "gfonts://Roboto"
+    id: font_temp
+    size: 48
+    bpp: 4
+  - file: "gfonts://Roboto"
+    id: font_error
+    size: 72
+    bpp: 4
+
 # --- Component ---
 external_components:
   - source:
@@ -46,6 +64,10 @@ external_components:
 m5dial_thermostat:
   entity_id: climate.my_thermostat
   display_id: m5dial_display
+  font_mode_id: font_mode
+  font_setpoint_id: font_setpoint
+  font_temp_id: font_temp
+  font_error_id: font_error
   # Optional (shown with defaults):
   # active_brightness: 255
   # idle_brightness: 50

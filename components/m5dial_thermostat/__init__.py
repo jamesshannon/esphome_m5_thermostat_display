@@ -1,6 +1,7 @@
 from esphome import codegen as cg
 from esphome.components import display, select
 from esphome.components.ledc import output as ledc_output
+from esphome.components.font import Font as EspFont
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_DISPLAY_ID,
@@ -27,7 +28,7 @@ M5DialThermostat = m5dial_ns.class_(
 UnitSelect = m5dial_ns.class_("UnitSelect", select.Select, cg.Component)
 
 DEPENDENCIES = ["api"]
-AUTO_LOAD = ["select", "output", "ledc"]
+AUTO_LOAD = ["select", "output", "ledc", "font"]
 CODEOWNERS = ["@jamesshannon"]
 
 CONF_ACTIVE_BRIGHTNESS = "active_brightness"
@@ -35,6 +36,10 @@ CONF_IDLE_BRIGHTNESS = "idle_brightness"
 CONF_IDLE_TIMEOUT = "idle_timeout"
 CONF_ENABLE_SOUNDS = "enable_sounds"
 CONF_COMMS_TIMEOUT = "comms_timeout"
+CONF_FONT_MODE_ID = "font_mode_id"
+CONF_FONT_SETPOINT_ID = "font_setpoint_id"
+CONF_FONT_TEMP_ID = "font_temp_id"
+CONF_FONT_ERROR_ID = "font_error_id"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -46,6 +51,10 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_IDLE_TIMEOUT, default="30s"): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_ENABLE_SOUNDS, default=True): cv.boolean,
         cv.Optional(CONF_COMMS_TIMEOUT, default="30s"): cv.positive_time_period_milliseconds,
+        cv.Optional(CONF_FONT_MODE_ID): cv.use_id(EspFont),
+        cv.Optional(CONF_FONT_SETPOINT_ID): cv.use_id(EspFont),
+        cv.Optional(CONF_FONT_TEMP_ID): cv.use_id(EspFont),
+        cv.Optional(CONF_FONT_ERROR_ID): cv.use_id(EspFont),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -96,14 +105,6 @@ async def _create_buzzer(owner_id):
     return None
 
 
-async def _create_font(owner_id, suffix, size):
-    # Font creation is intentionally optional in environments without predownloaded
-    # gfonts resources. Debug-only builds can still compile with fallback null
-    # fonts in this configuration.
-    del owner_id, suffix, size  # keep signature stable for callsites
-    return None
-
-
 async def _create_unit_select(owner_id, thermostat):
     unit_id = ID(f"{owner_id}_unit_select", is_declaration=True, type=UnitSelect)
     unit_config = {
@@ -131,19 +132,14 @@ async def to_code(config):
 
     await _create_buzzer(owner_id)
 
-    font_mode_id = await _create_font(owner_id, "font_mode", 16)
-    font_setpoint_id = await _create_font(owner_id, "font_setpoint", 20)
-    font_temp_id = await _create_font(owner_id, "font_temp", 48)
-    font_error_id = await _create_font(owner_id, "font_error", 72)
-
-    if font_mode_id is not None:
-        cg.add(var.set_font_mode(font_mode_id))
-    if font_setpoint_id is not None:
-        cg.add(var.set_font_setpoint(font_setpoint_id))
-    if font_temp_id is not None:
-        cg.add(var.set_font_temp(font_temp_id))
-    if font_error_id is not None:
-        cg.add(var.set_font_error(font_error_id))
+    if CONF_FONT_MODE_ID in config:
+        cg.add(var.set_font_mode(await cg.get_variable(config[CONF_FONT_MODE_ID])))
+    if CONF_FONT_SETPOINT_ID in config:
+        cg.add(var.set_font_setpoint(await cg.get_variable(config[CONF_FONT_SETPOINT_ID])))
+    if CONF_FONT_TEMP_ID in config:
+        cg.add(var.set_font_temp(await cg.get_variable(config[CONF_FONT_TEMP_ID])))
+    if CONF_FONT_ERROR_ID in config:
+        cg.add(var.set_font_error(await cg.get_variable(config[CONF_FONT_ERROR_ID])))
 
     unit_select = await _create_unit_select(owner_id, var)
     cg.add(var.set_unit_select(unit_select))
