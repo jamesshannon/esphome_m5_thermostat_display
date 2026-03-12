@@ -34,6 +34,7 @@ namespace
 
   constexpr uint8_t kPinModeInputPullup = static_cast<uint8_t>(GPIO_MODE_INPUT);
   constexpr uint8_t kPinModeOutput = static_cast<uint8_t>(GPIO_MODE_OUTPUT);
+  constexpr bool kBacklightActiveLow = true;
   constexpr gpio_num_t kBacklightPin = GPIO_NUM_9;
   constexpr ledc_mode_t kBacklightMode = LEDC_LOW_SPEED_MODE;
   constexpr ledc_timer_t kBacklightTimer = LEDC_TIMER_2;
@@ -267,7 +268,11 @@ namespace esphome
         return;
       }
       ESP_LOGD(TAG, "Backlight level set to %u", level);
-      this->backlight_->set_level(level / 255.0f);
+      const float normalized = static_cast<float>(kBacklightActiveLow
+                                                      ? (255U - level)
+                                                      : level) /
+                               255.0f;
+      this->backlight_->set_level(normalized);
     }
 
     void M5DialThermostat::setup_backlight_()
@@ -302,15 +307,18 @@ namespace esphome
 
     void M5DialThermostat::set_backlight_level_direct_(uint8_t level)
     {
+      const uint8_t hw_level = kBacklightActiveLow
+                                   ? static_cast<uint8_t>(255U - level)
+                                   : level;
       if (!this->backlight_ready_)
       {
         // Fallback: force backlight pin as digital output if LEDC setup failed.
         gpio_set_direction(kBacklightPin,
                            static_cast<gpio_mode_t>(kPinModeOutput));
-        gpio_set_level(kBacklightPin, level > 0 ? 1 : 0);
+        gpio_set_level(kBacklightPin, hw_level > 0 ? 1 : 0);
         return;
       }
-      const uint32_t duty = (static_cast<uint32_t>(level) * 1023U) / 255U;
+      const uint32_t duty = (static_cast<uint32_t>(hw_level) * 1023U) / 255U;
       ledc_set_duty(kBacklightMode, kBacklightChannel, duty);
       ledc_update_duty(kBacklightMode, kBacklightChannel);
     }
