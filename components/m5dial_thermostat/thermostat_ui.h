@@ -66,11 +66,11 @@ constexpr float kArcEndAngleDeg = kArcStartAngleDeg + kArcSpanDeg;
 constexpr int kDefaultCenterX = 120;
 constexpr int kDefaultCenterY = 120;
 // Outer radius near screen edge; inner radius gives 28 px width.
-constexpr int kDefaultOuterRadius = 114;
-constexpr int kDefaultInnerRadius = 86;
+constexpr int kDefaultOuterRadius = 118;
+constexpr int kDefaultInnerRadius = 90;
 
-// Setpoint dot: white fill (r=12) + 2 px border (total r=14 = arc width).
-constexpr int kSetpointDotFillRadius = 12;
+// Setpoint dot: white fill (r=10) + 4 px border (total r=14 = arc width).
+constexpr int kSetpointDotFillRadius = 10;
 constexpr int kSetpointDotBorderRadius = 14;
 // Current temp dot: 50% of arc width (14 px diameter = r=7).
 constexpr int kCurrentDotRadius = 7;

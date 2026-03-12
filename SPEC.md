@@ -545,8 +545,8 @@ void draw_arc_segment(
 
 ### Arc Layers (drawn bottom to top)
 
-Center: (120, 120). Outer radius: 114 px. Ring width: 28 px.
-Inner radius: 86 px. Background: white `#FFFFFF`.
+Center: (120, 120). Outer radius: 118 px. Ring width: 28 px.
+Inner radius: 90 px. Background: white `#FFFFFF`.
 
 **Layer 1 -- Track:** full 280 deg arc in `#ECE7E4`, always drawn.
 
@@ -560,7 +560,7 @@ on top of the track. See Color Logic. Omitted in off mode.
 - Omitted if `current_temp_` is NaN
 
 **Layer 4 -- Setpoint dot:**
-- White fill (r=12 px) with 2 px border in active color
+- White fill (r=10 px) with 4 px border in active color
   → total radius 14 px = 28 px diameter = arc width
 - Draws as: filled_circle(r=14, border_color) then
   filled_circle(r=12, white)
