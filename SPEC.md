@@ -272,8 +272,7 @@ callbacks, encoder ticks, button presses, comms timeout). In
 `loop()`, check the flag and call `this->display_->update()` once
 per iteration at most, then clear the flag.
 
-To keep encoder polling responsive during rapid knob movement,
-cap redraws at 30 Hz:
+To keep input processing responsive, cap redraws at 30 Hz:
 
 - Add `kMaxRedrawHz = 30` and
   `kRedrawIntervalMs = 1000 / kMaxRedrawHz`
@@ -402,18 +401,24 @@ Stop the tone after the duration using `set_timeout("buzzer_off", …)`.
 ## Rotary Encoder (Direct GPIO)
 
 GPIO40 (pin A), GPIO41 (pin B). Handled directly in C++ using
-GPIO reads in `loop()` with a 4-state quadrature table. No
+GPIO edge interrupts (`GPIO_INTR_ANYEDGE`) on both pins with a
+4-state quadrature table. No
 separate ESPHome `rotary_encoder` component needed.
 
-### Detent-level debouncing
+### Interrupt decode + detent-level debouncing
 
 A physical detent crossing on the M5 Dial encoder produces
-multiple quadrature state transitions. To prevent a single detent
-from registering multiple ticks, use an **accumulator**:
+multiple quadrature state transitions. Decode transitions in the
+ISR and accumulate raw counts in a `volatile` counter, then drain
+that counter in `loop()` and apply a detent accumulator:
 
 ```cpp
-// In on_encoder_changed_():
-this->encoder_accumulator_ += delta;  // raw quadrature delta
+// In ISR: decode transition and add raw delta.
+encoder_delta_counts_ += delta;
+
+// In loop(): atomically drain ISR counts.
+int32_t delta_counts = atomic_exchange(&encoder_delta_counts_, 0);
+this->encoder_accumulator_ += delta_counts;
 
 // One tick per 2 raw counts (half-quadrature equivalent,
 // matching M5Dial reference firmware: attachHalfQuad() + /2).
@@ -429,9 +434,7 @@ while (this->encoder_accumulator_ <= -kEncoderCountsPerTick) {
 
 `kEncoderCountsPerTick = 2` matches the reference firmware's
 half-quadrature behavior where each mechanical detent produces
-exactly one tick. Remove the millisecond-based time debounce
-(`kEncoderDebounceMs`) -- the count threshold makes it redundant
-and it can interfere with fast turning.
+exactly one tick.
 
 On each tick:
 1. If `!this->comms_ok_` or `isnan(this->target_temp_)`: return
@@ -466,17 +469,18 @@ On press:
 
 ### `setup()`
 1. Configure encoder GPIOs (GPIO40/41) as inputs with pullups
-2. Configure button GPIO (GPIO42) as input with pullup
-3. Subscribe to all HA entity attributes (see table above)
-4. Set display writer callback
-5. Set initial backlight brightness
+2. Register GPIO edge interrupts for encoder pins (A/B)
+3. Configure button GPIO (GPIO42) as input with pullup
+4. Subscribe to all HA entity attributes (see table above)
+5. Set display writer callback
+6. Set initial backlight brightness
 
 ### `loop()`
-1. Read encoder state, call tick handler on change
+1. Drain ISR encoder counts, convert to detent ticks, call tick handler
 2. Read button state, call press handler on change (debounced)
 3. Check comms timeout
 4. Check idle timeout for backlight dimming
-5. If `this->needs_redraw_`: call `this->display_->update()`
+5. If `this->needs_redraw_` and redraw interval elapsed: call `this->display_->update()`
 
 ### `dump_config()`
 Log entity_id, display pointer, brightness settings, sound
@@ -751,12 +755,7 @@ Heavily comment angle math, arc color logic, and the
 
 ## TODO
 
-- Encoder reliability at very high rotation speed:
-  Polling-based quadrature decode can miss intermediate A/B
-  transitions if the loop is busy (for example, during display
-  rendering), resulting in fewer ticks than physical detents.
-- Recommended next step:
-  Move rotary decode to GPIO edge interrupts (or ESP32 PCNT) and
-  accumulate deltas in ISR-safe state. Drain accumulated counts in
-  `loop()` and call `on_encoder_tick_()` there. Keep ISR work
-  minimal (no logging, no display updates, no HA service calls).
+- Optional robustness improvement:
+  Evaluate ESP32 PCNT hardware decoding with glitch filtering as
+  an alternative to GPIO ISR decoding for extreme spin rates or
+  electrically noisy environments.

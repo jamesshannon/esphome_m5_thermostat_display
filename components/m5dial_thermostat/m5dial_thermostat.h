@@ -93,7 +93,8 @@ namespace esphome
       void on_temp_step(StringRef state);
 
       void setup_input_pins_();
-      void on_encoder_changed_(int new_state);
+      static void encoder_isr_handler_(void *arg);
+      void process_encoder_counts_();
       void on_encoder_tick_(int direction);
       void on_button_tick_(int button_state);
       void on_mode_button_();
@@ -166,10 +167,11 @@ namespace esphome
       uint32_t last_button_ms_{0};
       uint32_t last_redraw_ms_{0};
 
-      uint8_t prev_encoder_state_{0};
+      volatile uint8_t encoder_isr_state_{0};
+      volatile int32_t encoder_delta_counts_{0};
       // Accumulates raw quadrature deltas; fires a tick every
       // kEncoderCountsPerTick counts to align with detents.
-      int8_t encoder_accumulator_{0};
+      int32_t encoder_accumulator_{0};
       int prev_button_state_{1};
 
       uint8_t active_brightness_{255};

@@ -4,6 +4,8 @@
 #include <map>
 #include <cstdlib>
 #include <cstring>
+#include <esp_attr.h>
+#include <esp_err.h>
 #include <driver/gpio.h>
 #include <driver/ledc.h>
 
@@ -209,11 +211,39 @@ namespace esphome
                          static_cast<gpio_mode_t>(kPinModeInputPullup));
       gpio_set_pull_mode(static_cast<gpio_num_t>(kHoldPin), GPIO_PULLUP_ONLY);
 
-      this->prev_encoder_state_ =
+      this->encoder_isr_state_ =
           static_cast<uint8_t>((gpio_get_level(static_cast<gpio_num_t>(kEncoderPinA)) << 1) |
                                gpio_get_level(static_cast<gpio_num_t>(kEncoderPinB)));
+      this->encoder_delta_counts_ = 0;
+      this->encoder_accumulator_ = 0;
       this->prev_button_state_ =
           gpio_get_level(static_cast<gpio_num_t>(kButtonPin));
+
+      const esp_err_t install_err = gpio_install_isr_service(0);
+      if (install_err != ESP_OK && install_err != ESP_ERR_INVALID_STATE)
+      {
+        ESP_LOGE(TAG, "Failed to install GPIO ISR service: err=%d", install_err);
+        return;
+      }
+
+      gpio_set_intr_type(static_cast<gpio_num_t>(kEncoderPinA), GPIO_INTR_ANYEDGE);
+      gpio_set_intr_type(static_cast<gpio_num_t>(kEncoderPinB), GPIO_INTR_ANYEDGE);
+
+      const esp_err_t add_a_err = gpio_isr_handler_add(
+          static_cast<gpio_num_t>(kEncoderPinA),
+          &M5DialThermostat::encoder_isr_handler_, this);
+      if (add_a_err != ESP_OK)
+      {
+        ESP_LOGE(TAG, "Failed to register encoder ISR A: err=%d", add_a_err);
+      }
+
+      const esp_err_t add_b_err = gpio_isr_handler_add(
+          static_cast<gpio_num_t>(kEncoderPinB),
+          &M5DialThermostat::encoder_isr_handler_, this);
+      if (add_b_err != ESP_OK)
+      {
+        ESP_LOGE(TAG, "Failed to register encoder ISR B: err=%d", add_b_err);
+      }
     }
 
     void M5DialThermostat::set_backlight_level_(uint8_t level)
@@ -678,19 +708,40 @@ namespace esphome
                         { this->send_setpoint_to_ha_(); });
     }
 
-    void M5DialThermostat::on_encoder_changed_(int new_state)
+    void IRAM_ATTR M5DialThermostat::encoder_isr_handler_(void *arg)
     {
-      const int next = new_state & 0x03;
-      if (next == static_cast<int>(this->prev_encoder_state_))
+      // Decode one quadrature transition and enqueue raw delta for loop().
+      M5DialThermostat *const thermostat =
+          static_cast<M5DialThermostat *>(arg);
+      const int next =
+          ((gpio_get_level(static_cast<gpio_num_t>(kEncoderPinA)) << 1) |
+           gpio_get_level(static_cast<gpio_num_t>(kEncoderPinB))) &
+          0x03;
+      const uint8_t prev = thermostat->encoder_isr_state_;
+      if (next == static_cast<int>(prev))
       {
         return;
       }
 
-      const int8_t delta =
-          kEncoderTable[this->prev_encoder_state_][next];
-      this->prev_encoder_state_ = static_cast<uint8_t>(next);
+      const int8_t delta = kEncoderTable[prev][next];
+      thermostat->encoder_isr_state_ = static_cast<uint8_t>(next);
 
       if (delta == 0)
+      {
+        return;
+      }
+
+      __atomic_fetch_add(&thermostat->encoder_delta_counts_, delta,
+                         __ATOMIC_RELAXED);
+    }
+
+    void M5DialThermostat::process_encoder_counts_()
+    {
+      // Drain raw ISR counts and convert them to detent-level ticks.
+      const int32_t delta_counts =
+          __atomic_exchange_n(&this->encoder_delta_counts_, 0,
+                              __ATOMIC_ACQ_REL);
+      if (delta_counts == 0)
       {
         return;
       }
@@ -698,7 +749,7 @@ namespace esphome
       // Accumulate raw counts; fire one tick per kEncoderCountsPerTick
       // counts so a single mechanical detent produces exactly one tick
       // (half-quadrature equivalent, per M5Dial reference firmware).
-      this->encoder_accumulator_ += delta;
+      this->encoder_accumulator_ += delta_counts;
       while (this->encoder_accumulator_ >= kEncoderCountsPerTick)
       {
         this->on_encoder_tick_(+1);
@@ -895,10 +946,7 @@ namespace esphome
 
       if (allow_user_input)
       {
-        const int encoder_state =
-            (gpio_get_level(static_cast<gpio_num_t>(kEncoderPinA)) << 1) |
-            gpio_get_level(static_cast<gpio_num_t>(kEncoderPinB));
-        this->on_encoder_changed_(encoder_state);
+        this->process_encoder_counts_();
 
         const int button_state =
             gpio_get_level(static_cast<gpio_num_t>(kButtonPin));
