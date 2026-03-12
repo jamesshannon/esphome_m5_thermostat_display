@@ -935,9 +935,10 @@ namespace esphome
 
     void M5DialThermostat::loop()
     {
-      const uint32_t now = millis();
+      const uint32_t loop_start_ms = millis();
 #ifndef DEBUG_TEST
-      if (this->comms_ok_ && now - this->last_ha_update_ > this->comms_timeout_ms_)
+      if (this->comms_ok_ &&
+          loop_start_ms - this->last_ha_update_ > this->comms_timeout_ms_)
       {
         this->comms_ok_ = false;
         this->needs_redraw_ = true;
@@ -959,25 +960,26 @@ namespace esphome
         this->on_button_tick_(button_state);
       }
 
+      const uint32_t post_input_ms = millis();
       if (!this->comms_ok_)
       {
         this->set_display_brightness_(false);
       }
       else if (this->last_interaction_ != 0 &&
-               now - this->last_interaction_ > this->idle_timeout_ms_)
+               post_input_ms - this->last_interaction_ > this->idle_timeout_ms_)
       {
         this->set_display_brightness_(false);
       }
 
       const bool redraw_interval_elapsed =
           this->last_redraw_ms_ == 0 ||
-          now - this->last_redraw_ms_ >= kRedrawIntervalMs;
+          post_input_ms - this->last_redraw_ms_ >= kRedrawIntervalMs;
       if (this->needs_redraw_ && this->display_ != nullptr &&
           redraw_interval_elapsed)
       {
         ESP_LOGD(TAG, "Display update triggered");
         this->display_->update();
-        this->last_redraw_ms_ = now;
+        this->last_redraw_ms_ = post_input_ms;
         this->needs_redraw_ = false;
       }
     }
