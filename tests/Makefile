@@ -2,7 +2,8 @@ CXX ?= g++
 CXXFLAGS += -std=c++17 -Wall -Wextra -I. -I..
 
 TEST_SOURCES := test_arc_math.cpp test_color_logic.cpp \
-	test_unit_conversion.cpp test_runtime_logic.cpp
+	test_unit_conversion.cpp test_runtime_logic.cpp \
+	test_mode_label.cpp
 UI_SOURCE := ../components/m5dial_thermostat/thermostat_ui.cpp
 RUNTIME_SOURCE := ../components/m5dial_thermostat/runtime_logic.cpp
 TEST_BINS := $(TEST_SOURCES:.cpp=)

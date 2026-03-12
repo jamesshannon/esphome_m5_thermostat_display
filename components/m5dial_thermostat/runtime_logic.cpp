@@ -8,9 +8,10 @@ namespace esphome
     namespace
     {
       constexpr uint32_t kRotateUpFrequencyHz = 6000;
-      constexpr uint32_t kRotateDownFrequencyHz = 7000;
+      constexpr uint32_t kRotateUpToneDurationMs = 4;
+      constexpr uint32_t kRotateDownFrequencyHz = 3000;
+      constexpr uint32_t kRotateDownToneDurationMs = 5;
       constexpr uint32_t kClickFrequencyHz = 2000;
-      constexpr uint32_t kRotateToneDurationMs = 8;
       constexpr uint32_t kClickToneDurationMs = 20;
     } // namespace
 
@@ -19,9 +20,9 @@ namespace esphome
       switch (event)
       {
       case SoundEvent::kRotateUp:
-        return ToneSpec{kRotateUpFrequencyHz, kRotateToneDurationMs};
+        return ToneSpec{kRotateUpFrequencyHz, kRotateUpToneDurationMs};
       case SoundEvent::kRotateDown:
-        return ToneSpec{kRotateDownFrequencyHz, kRotateToneDurationMs};
+        return ToneSpec{kRotateDownFrequencyHz, kRotateDownToneDurationMs};
       case SoundEvent::kClick:
       default:
         return ToneSpec{kClickFrequencyHz, kClickToneDurationMs};

@@ -16,7 +16,7 @@ from esphome.const import (
     CONF_NUMBER,
     CONF_PIN,
 )
-from esphome.core import CORE, ID
+from esphome.core import ID
 from esphome.components.esp32 import gpio as esp32_gpio
 
 m5dial_ns = cg.esphome_ns.namespace("m5dial_thermostat")
@@ -40,6 +40,7 @@ CONF_FONT_MODE_ID = "font_mode_id"
 CONF_FONT_SETPOINT_ID = "font_setpoint_id"
 CONF_FONT_TEMP_ID = "font_temp_id"
 CONF_FONT_ERROR_ID = "font_error_id"
+CONF_BACKLIGHT_ID = "backlight_id"
 
 CONFIG_SCHEMA = cv.Schema(
     {
@@ -55,6 +56,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_FONT_SETPOINT_ID): cv.use_id(EspFont),
         cv.Optional(CONF_FONT_TEMP_ID): cv.use_id(EspFont),
         cv.Optional(CONF_FONT_ERROR_ID): cv.use_id(EspFont),
+        cv.GenerateID(CONF_BACKLIGHT_ID): cv.declare_id(ledc_output.LEDCOutput),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -65,11 +67,6 @@ def _normalize_pin(value):
             return int(value[4:])
         return int(value)
     return int(value)
-
-
-def _register_component_id(component_id):
-    if component_id is not None and str(component_id) is not None:
-        CORE.component_ids.add(str(component_id))
 
 
 async def _create_ledc_output(pin, component_id):
@@ -87,15 +84,11 @@ async def _create_ledc_output(pin, component_id):
         },
         CONF_FREQUENCY: 1000.0,
     }
-    _register_component_id(component_id)
     await ledc_output.to_code(ledc_config)
     return component_id
 
 
-async def _create_ledc_backlight(owner_id):
-    backlight_id = ID(
-        f"{owner_id}_backlight", is_declaration=True, type=ledc_output.LEDCOutput
-    )
+async def _create_ledc_backlight(backlight_id):
     await _create_ledc_output("GPIO9", backlight_id)
     return backlight_id
 
@@ -125,12 +118,10 @@ async def to_code(config):
     display_obj = await cg.get_variable(config[CONF_DISPLAY_ID])
     cg.add(var.set_display(display_obj))
 
-    owner_id = str(config[CONF_ID])
-
-    backlight_id = await _create_ledc_backlight(owner_id)
+    backlight_id = await _create_ledc_backlight(config[CONF_BACKLIGHT_ID])
     cg.add(var.set_backlight(await cg.get_variable(backlight_id)))
 
-    await _create_buzzer(owner_id)
+    await _create_buzzer(str(config[CONF_ID]))
 
     if CONF_FONT_MODE_ID in config:
         cg.add(var.set_font_mode(await cg.get_variable(config[CONF_FONT_MODE_ID])))
@@ -141,7 +132,7 @@ async def to_code(config):
     if CONF_FONT_ERROR_ID in config:
         cg.add(var.set_font_error(await cg.get_variable(config[CONF_FONT_ERROR_ID])))
 
-    unit_select = await _create_unit_select(owner_id, var)
+    unit_select = await _create_unit_select(str(config[CONF_ID]), var)
     cg.add(var.set_unit_select(unit_select))
 
     cg.add(var.set_active_brightness(config[CONF_ACTIVE_BRIGHTNESS]))

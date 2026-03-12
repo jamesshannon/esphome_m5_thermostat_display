@@ -125,6 +125,9 @@ namespace esphome
         float angle_end,
         Color color);
 
+    const char *get_setpoint_label_for_mode(
+        HvacMode mode, HvacAction action);
+
     void render_thermostat(
         display::Display &d,
         const ThermostatState &state,

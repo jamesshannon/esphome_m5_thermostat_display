@@ -382,8 +382,8 @@ Tones are generated directly via `ledc_set_freq` / `ledc_set_duty`
 skip all tone calls.
 
 Three tones (based on M5Dial reference firmware):
-- **Rotary up (CW):** 6000 Hz, 8 ms
-- **Rotary down (CCW):** 7000 Hz, 8 ms
+- **Rotary up (CW):** 6000 Hz, 4 ms
+- **Rotary down (CCW):** 3000 Hz, 5 ms
 - **Button click:** 2000 Hz, 20 ms
 
 Higher frequencies (6–7 kHz) are crisp on piezo buzzers rather
@@ -651,16 +651,20 @@ int compute_cool_segments(
 
 ### Center Text
 
-White background. All text horizontally centered. Layout top to
-bottom:
+White background. All text horizontally centered. *Current temp* is centered
+vertically and the other text is placed in relation to *Current temp*.
 
-1. **Mode label** (~16px, black `#000000`): from `hvac_action_`
-   if actionable, else `hvac_mode_`. Labels: `"Off"`,
-   `"Heating"`, `"Cooling"`, `"Fan"`, `"Idle"`
-2. **Current temp** (~48px, black `#000000`): e.g. `"21 deg"` --
+1. **Current temp** (~48px, black `#000000`, centered vertically):
+   e.g. `"21 °C"` --
    display unit applied, formatted via `snprintf` into stack
    buffer
-3. **Setpoint** (~20px, muted `#555555`): e.g. `"Set 22.5 deg"`
+
+2. **Mode label** (~16px, black `#000000`, bottom of text is 10
+   pixels above the top of the *Current temp* text):
+   from `hvac_action_` if actionable, else `hvac_mode_`. Labels: `"Off"`,
+   `"Heating"`, `"Cooling"`, `"Fan"`, `"Idle"`
+3. **Setpoint** (~20px, muted `#555555`, top of text is 15 pixels below
+   bottom of the *Current temp* text): e.g. `"22.5 °C"`
    -- omitted if unavailable
 
 ### Lost Comms Screen

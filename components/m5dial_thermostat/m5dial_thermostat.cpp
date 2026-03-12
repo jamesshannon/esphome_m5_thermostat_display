@@ -4,7 +4,6 @@
 #include <map>
 #include <cstdlib>
 #include <cstring>
-#include <esp_attr.h>
 #include <esp_err.h>
 #include <driver/gpio.h>
 #include <driver/ledc.h>
@@ -394,9 +393,11 @@ namespace esphome
         this->stop_buzzer_tone_();
       }
       this->start_buzzer_tone_(tone_spec.frequency_hz);
-      this->set_timeout("buzzer_off", tone_spec.duration_ms,
-                        [this]()
-                        { this->stop_buzzer_tone_(); });
+      delay(tone_spec.duration_ms);
+      this->stop_buzzer_tone_();
+      // this->set_timeout("buzzer_off", tone_spec.duration_ms,
+      //                   [this]()
+      //                   { this->stop_buzzer_tone_(); });
     }
 
     bool M5DialThermostat::parse_float_(StringRef value, float *out) const
@@ -712,7 +713,7 @@ namespace esphome
                         { this->send_setpoint_to_ha_(); });
     }
 
-    void IRAM_ATTR M5DialThermostat::encoder_isr_handler_(void *arg)
+    void M5DialThermostat::encoder_isr_handler_(void *arg)
     {
       // Decode one quadrature transition and enqueue raw delta for loop().
       M5DialThermostat *const thermostat =
@@ -793,6 +794,8 @@ namespace esphome
       const int next_idx = (idx + 1) % this->supported_modes_count_;
       const HvacMode mode = this->supported_modes_[next_idx];
       this->hvac_mode_ = mode;
+      // Reset stale action so label shows mode name until HA responds.
+      this->hvac_action_ = HvacAction::kUnknown;
       this->send_mode_to_ha_(mode);
 
       this->last_interaction_ = millis();

@@ -24,12 +24,12 @@ static void test_consume_encoder_counts() {
 static void test_tone_spec_and_retrigger() {
   const ToneSpec rotate_up = get_tone_spec(SoundEvent::kRotateUp);
   assert(rotate_up.frequency_hz == 6000U);
-  assert(rotate_up.duration_ms == 8U);
+  assert(rotate_up.duration_ms == 4U);
   assert(should_retrigger_buzzer(SoundEvent::kRotateUp));
 
   const ToneSpec rotate_down = get_tone_spec(SoundEvent::kRotateDown);
-  assert(rotate_down.frequency_hz == 7000U);
-  assert(rotate_down.duration_ms == 8U);
+  assert(rotate_down.frequency_hz == 3000U);
+  assert(rotate_down.duration_ms == 5U);
   assert(should_retrigger_buzzer(SoundEvent::kRotateDown));
 
   const ToneSpec click = get_tone_spec(SoundEvent::kClick);
