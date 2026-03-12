@@ -11,6 +11,7 @@
 
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
+#include "runtime_logic.h"
 
 namespace
 {
@@ -31,8 +32,6 @@ namespace
   constexpr char kNoteRotateUp[] = "up:d=64,o=6,b=255:c";
   constexpr char kNoteRotateDown[] = "down:d=64,o=4,b=255:c";
   constexpr char kNoteClick[] = "click:d=64,o=5,b=255:c,p,c";
-  constexpr uint32_t kRotateToneDurationMs = 8;
-  constexpr uint32_t kClickToneDurationMs = 20;
 
   constexpr uint8_t kPinModeInputPullup = static_cast<uint8_t>(GPIO_MODE_INPUT);
   constexpr gpio_num_t kBacklightPin = GPIO_NUM_9;
@@ -378,25 +377,24 @@ namespace esphome
         return;
       }
 
-      // Frequencies from M5Dial reference firmware: high frequencies
-      // (6-7 kHz) are crisp on piezo; low frequencies (1-2 kHz) buzz.
-      uint32_t frequency_hz = 2000; // button click default
-      uint32_t duration_ms = kClickToneDurationMs;
+      SoundEvent sound_event = SoundEvent::kClick;
       if (std::strcmp(tone, kNoteRotateUp) == 0)
       {
-        frequency_hz = 6000;
-        duration_ms = kRotateToneDurationMs;
+        sound_event = SoundEvent::kRotateUp;
       }
       else if (std::strcmp(tone, kNoteRotateDown) == 0)
       {
-        frequency_hz = 7000;
-        duration_ms = kRotateToneDurationMs;
+        sound_event = SoundEvent::kRotateDown;
       }
 
-      // Force an off->on edge so rapid encoder ticks sound discrete.
-      this->stop_buzzer_tone_();
-      this->start_buzzer_tone_(frequency_hz);
-      this->set_timeout("buzzer_off", duration_ms,
+      const ToneSpec tone_spec = get_tone_spec(sound_event);
+      if (should_retrigger_buzzer(sound_event))
+      {
+        // Force an off->on edge so rapid encoder ticks sound discrete.
+        this->stop_buzzer_tone_();
+      }
+      this->start_buzzer_tone_(tone_spec.frequency_hz);
+      this->set_timeout("buzzer_off", tone_spec.duration_ms,
                         [this]()
                         { this->stop_buzzer_tone_(); });
     }
@@ -752,19 +750,16 @@ namespace esphome
         return;
       }
 
-      // Accumulate raw counts; fire one tick per kEncoderCountsPerTick
-      // counts so a single mechanical detent produces exactly one tick
-      // (half-quadrature equivalent, per M5Dial reference firmware).
-      this->encoder_accumulator_ += delta_counts;
-      while (this->encoder_accumulator_ >= kEncoderCountsPerTick)
+      const EncoderTickResult result = consume_encoder_counts(
+          this->encoder_accumulator_, delta_counts, kEncoderCountsPerTick);
+      this->encoder_accumulator_ = result.accumulator;
+      for (int32_t i = 0; i < result.clockwise_ticks; ++i)
       {
         this->on_encoder_tick_(+1);
-        this->encoder_accumulator_ -= kEncoderCountsPerTick;
       }
-      while (this->encoder_accumulator_ <= -kEncoderCountsPerTick)
+      for (int32_t i = 0; i < result.counterclockwise_ticks; ++i)
       {
         this->on_encoder_tick_(-1);
-        this->encoder_accumulator_ += kEncoderCountsPerTick;
       }
     }
 
@@ -965,8 +960,8 @@ namespace esphome
       {
         this->set_display_brightness_(false);
       }
-      else if (this->last_interaction_ != 0 &&
-               post_input_ms - this->last_interaction_ > this->idle_timeout_ms_)
+      else if (should_idle_dim(post_input_ms, this->last_interaction_,
+                               this->idle_timeout_ms_))
       {
         this->set_display_brightness_(false);
       }
