@@ -961,7 +961,7 @@ namespace esphome
       const uint32_t post_input_ms = millis();
       if (!this->comms_ok_)
       {
-        this->set_display_brightness_(false);
+        this->set_display_brightness_(true);
       }
       else if (should_idle_dim(post_input_ms, this->last_interaction_,
                                this->idle_timeout_ms_))

@@ -320,6 +320,8 @@ restore (any subscription callback fires), set
 **When `comms_ok_ == false`:**
 - Display the lost comms screen (large centered `?`, see UI)
 - All encoder and button input is ignored
+- Keep backlight at `active_brightness_` so the error screen remains
+  visible while disconnected
 
 **NaN setpoint vs. lost comms:** When `hvac_mode_` is `kOff` or `kIdle`, HA
 may not provide `temperature`. This is normal, not a comms error.
