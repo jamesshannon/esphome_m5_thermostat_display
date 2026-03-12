@@ -57,23 +57,34 @@ struct ThermostatFonts {
   display::BaseFont *error{nullptr};
 };
 
-constexpr float kArcStartAngleDeg = 120.0f;
-constexpr float kArcSpanDeg = 300.0f;
+// Arc spans [130, 410] degrees (280° span, gap at bottom).
+// 0° = 3 o'clock, clockwise. Y increases downward.
+constexpr float kArcStartAngleDeg = 130.0f;
+constexpr float kArcSpanDeg = 280.0f;
 constexpr float kArcEndAngleDeg = kArcStartAngleDeg + kArcSpanDeg;
 
 constexpr int kDefaultCenterX = 120;
 constexpr int kDefaultCenterY = 120;
-constexpr int kDefaultOuterRadius = 108;
-constexpr int kDefaultInnerRadius = 90;
+// Outer radius near screen edge; inner radius gives 28 px width.
+constexpr int kDefaultOuterRadius = 114;
+constexpr int kDefaultInnerRadius = 86;
 
-constexpr Color kColorTrack = Color(0xCC, 0xCC, 0xCC);
-constexpr Color kColorHeatLight = Color(0xFF, 0xCB, 0xA4);
-constexpr Color kColorHeatDark = Color(0xE8, 0x85, 0x5A);
-constexpr Color kColorCoolLight = Color(0xAD, 0xD8, 0xF0);
-constexpr Color kColorCoolDark = Color(0x1E, 0x90, 0xFF);
-constexpr Color kColorFan = Color(0xC8, 0xA8, 0xE9);
-constexpr Color kColorText = Color(0xFF, 0xFF, 0xFF);
-constexpr Color kColorTextMuted = Color(0xDD, 0xDD, 0xDD);
+// Setpoint dot: white fill (r=12) + 2 px border (total r=14 = arc width).
+constexpr int kSetpointDotFillRadius = 12;
+constexpr int kSetpointDotBorderRadius = 14;
+// Current temp dot: 50% of arc width (14 px diameter = r=7).
+constexpr int kCurrentDotRadius = 7;
+
+constexpr Color kColorBackground  = Color(0xFF, 0xFF, 0xFF);
+constexpr Color kColorTrack       = Color(0xEC, 0xE7, 0xE4);
+constexpr Color kColorHeatLight   = Color(0xFF, 0xB6, 0x91);
+constexpr Color kColorHeatDark    = Color(0xFF, 0x70, 0x22);
+constexpr Color kColorCoolLight   = Color(0x95, 0xC8, 0xF9);
+constexpr Color kColorCoolDark    = Color(0x21, 0x96, 0xF3);
+constexpr Color kColorFan         = Color(0xC8, 0xA8, 0xE9);
+constexpr Color kColorCurrentDot  = Color(0x7F, 0x7F, 0x7F);
+constexpr Color kColorText        = Color(0x00, 0x00, 0x00);
+constexpr Color kColorTextMuted   = Color(0x55, 0x55, 0x55);
 
 float temp_to_angle(float temp, float min_temp, float max_temp);
 
@@ -84,14 +95,14 @@ int compute_heat_segments(
     float setpoint,
     float min_t,
     float max_t,
-    ArcSegment out[3]);
+    ArcSegment out[2]);
 
 int compute_cool_segments(
     float current,
     float setpoint,
     float min_t,
     float max_t,
-    ArcSegment out[3]);
+    ArcSegment out[2]);
 
 float celsius_to_fahrenheit(float value);
 

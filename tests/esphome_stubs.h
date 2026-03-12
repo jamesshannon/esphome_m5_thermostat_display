@@ -32,6 +32,9 @@ struct StringRef {
 
 namespace display {
 
+// Minimal font stub used by ThermostatFonts.
+class BaseFont {};
+
 enum class TextAlign {
   TOP_LEFT = 0x00,
   TOP = 0x00,

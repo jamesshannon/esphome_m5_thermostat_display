@@ -476,33 +476,41 @@ enable, comms timeout.
 
 ### Arc Geometry
 
-The arc spans **300 degrees**, gap at the bottom (6 o'clock).
+The arc spans **280 degrees**, gap at the bottom (6 o'clock).
 Temperature maps linearly from `min_temp_` to `max_temp_`.
 
 **Coordinate convention: 0 deg = 3 o'clock, increasing
 clockwise.** (Matches ESPHome's `line_at_angle()` and standard
 `cos`/`sin` in screen coordinates where Y increases downward.)
 
-- Arc start: **120 deg** (7 o'clock) = `min_temp_`
-- Arc end: **420 deg** (= 60 mod 360, 5 o'clock) = `max_temp_`
-- Direction: clockwise through 12 o'clock (the long way, 300 deg)
+- Arc start: **130 deg** (≈ 7–8 o'clock) = `min_temp_`
+- Arc end: **410 deg** (= 50 mod 360, ≈ 4–5 o'clock) = `max_temp_`
+- Direction: clockwise through 12 o'clock (280 deg span)
 - **Document this convention explicitly in comments -- it is the
   most likely source of bugs**
 
-Work in the `[120, 420]` range internally to avoid wraparound
+Work in the `[130, 410]` range internally to avoid wraparound
 arithmetic; mod by 360 only when converting to screen
 coordinates.
 
 ```cpp
-// Returns angle in [120, 420]
+// Returns angle in [130, 410]
 float temp_to_angle(float temp,
                     float min_temp,
                     float max_temp) {
   float frac = (temp - min_temp)
              / (max_temp - min_temp);
-  return 120.0f + frac * 300.0f;
+  return 130.0f + frac * 280.0f;
 }
 ```
+
+**Ring dimensions** (240×240 display, center (120,120)):
+
+| Constant | Value | Notes |
+|---|---|---|
+| `kDefaultOuterRadius` | 114 px | Near screen edge |
+| `kDefaultInnerRadius` | 86 px | Width = 28 px |
+| Arc centerline radius | 100 px | (114+86)/2 |
 
 ### Arc Drawing
 
@@ -537,62 +545,70 @@ void draw_arc_segment(
 
 ### Arc Layers (drawn bottom to top)
 
-Center: (120, 120). Outer radius: ~108px. Ring width: ~18px.
-Inner radius: ~90px.
+Center: (120, 120). Outer radius: 114 px. Ring width: 28 px.
+Inner radius: 86 px. Background: white `#FFFFFF`.
 
-**Layer 1 -- Gray track:** full 300 deg arc, always drawn.
+**Layer 1 -- Track:** full 280 deg arc in `#ECE7E4`, always drawn.
 
-**Layer 2 -- Colored fill:** mode-dependent, see Color Logic.
-Omitted in off mode.
+**Layer 2 -- Colored overlay:** mode-dependent segments drawn
+on top of the track. See Color Logic. Omitted in off mode.
 
 **Layer 3 -- Current temp dot:**
-- Filled circle at arc centerline for `current_temp_`
-- Radius ~9px (half ring width)
-- Color: same as arc segment underneath it
+- Filled circle at arc centerline (r=100) for `current_temp_`
+- Radius 7 px (50% of arc width = 14 px diameter)
+- Color: dark grey `#7F7F7F`
 - Omitted if `current_temp_` is NaN
 
 **Layer 4 -- Setpoint dot:**
-- Filled circle at arc centerline for `local_setpoint_`
-- Radius ~18px (full ring width)
-- Color: dark mode color
+- White fill (r=12 px) with 2 px border in active color
+  → total radius 14 px = 28 px diameter = arc width
+- Draws as: filled_circle(r=14, border_color) then
+  filled_circle(r=12, white)
+- Active color: heat → `#FF7022`, cool → `#2196F3`,
+  others → track color
 - Omitted if setpoint unavailable (NaN or off mode)
 
 ### Arc Color Logic
 
-**Off:** gray track only.
+The full track (`#ECE7E4`) is always drawn first. Mode-dependent
+segments are then **overlaid** on top. Up to 2 overlay segments.
 
-**Heat:**
-- Light salmon: `min_temp_` to `min(current, setpoint)`
-- Dark salmon: band between `current_temp_` and
-  `local_setpoint_` (the active gap)
-- Gray: `max(current, setpoint)` to `max_temp_`
+**Off / HeatCool / Auto / Dry / Unknown:** track only, no overlay.
 
-**Cool** (mirror of heat, from `max_temp_` inward):
-- Light blue: `max_temp_` to `max(current, setpoint)`
-- Dark blue: band between `local_setpoint_` and `current_temp_`
-- Gray: `min(current, setpoint)` to `min_temp_`
+**Heat** (filling from left/min inward):
+- **Current segment** (always): `[arc_start, current_angle]`
+  color `#FFB691`. Represents how far the room has warmed.
+- **Active segment** (only if `setpoint > current`):
+  `[current_angle, setpoint_angle]` color `#FF7022`. Shows
+  how much more heating is demanded.
 
-**Fan:** full arc in light lavender, no variation.
+**Cool** (filling from right/max inward):
+- **Current segment** (always): `[current_angle, arc_end]`
+  color `#95C8F9`. Represents how far the room has cooled.
+- **Active segment** (only if `setpoint < current`):
+  `[setpoint_angle, current_angle]` color `#2196F3`. Shows
+  how much more cooling is demanded.
+
+**Fan:** full arc in light lavender `#C8A8E9`, no variation.
 
 ```cpp
 // Named color constants in thermostat_ui.h
-constexpr Color kColorTrack =
-    Color(0xCC, 0xCC, 0xCC);
-constexpr Color kColorHeatLight =
-    Color(0xFF, 0xCB, 0xA4);
-constexpr Color kColorHeatDark =
-    Color(0xE8, 0x85, 0x5A);
-constexpr Color kColorCoolLight =
-    Color(0xAD, 0xD8, 0xF0);
-constexpr Color kColorCoolDark =
-    Color(0x1E, 0x90, 0xFF);
-constexpr Color kColorFan =
-    Color(0xC8, 0xA8, 0xE9);
+constexpr Color kColorBackground = Color(0xFF, 0xFF, 0xFF);
+constexpr Color kColorTrack     = Color(0xEC, 0xE7, 0xE4);
+constexpr Color kColorHeatLight = Color(0xFF, 0xB6, 0x91);
+constexpr Color kColorHeatDark  = Color(0xFF, 0x70, 0x22);
+constexpr Color kColorCoolLight = Color(0x95, 0xC8, 0xF9);
+constexpr Color kColorCoolDark  = Color(0x21, 0x96, 0xF3);
+constexpr Color kColorFan       = Color(0xC8, 0xA8, 0xE9);
+constexpr Color kColorCurrentDot = Color(0x7F, 0x7F, 0x7F);
+constexpr Color kColorText      = Color(0x00, 0x00, 0x00);
+constexpr Color kColorTextMuted = Color(0x55, 0x55, 0x55);
 ```
 
 ### Arc Segment Computation
 
-Pure logic for testability. Returns segments to draw:
+Pure logic for testability. Returns **overlay** segments only
+(the track is always drawn separately in `render_thermostat`):
 
 ```cpp
 struct ArcSegment {
@@ -601,33 +617,36 @@ struct ArcSegment {
   Color color;
 };
 
-// Returns segment count (max 3)
+// Returns overlay segment count (0, 1, or 2).
+// out[0] = current segment, out[1] = active segment (if any).
 int compute_heat_segments(
     float current, float setpoint,
     float min_t, float max_t,
-    ArcSegment out[3]);
+    ArcSegment out[2]);
 int compute_cool_segments(
     float current, float setpoint,
     float min_t, float max_t,
-    ArcSegment out[3]);
+    ArcSegment out[2]);
 ```
 
 ### Center Text
 
-Layout, top to bottom, all horizontally centered:
+White background. All text horizontally centered. Layout top to
+bottom:
 
-1. **Mode label** (~16px, arc color): from `hvac_action_` if
-   actionable, else `hvac_mode_`. Labels: `"Off"`, `"Heating"`,
-   `"Cooling"`, `"Fan"`, `"Idle"`
-2. **Current temp** (~48px, white): e.g. `"21 deg"` -- display
-   unit applied, formatted via `snprintf` into stack buffer
-3. **Setpoint** (~20px, subdued gray): e.g. `"Set 22.5 deg"` --
-   omitted if unavailable
+1. **Mode label** (~16px, black `#000000`): from `hvac_action_`
+   if actionable, else `hvac_mode_`. Labels: `"Off"`,
+   `"Heating"`, `"Cooling"`, `"Fan"`, `"Idle"`
+2. **Current temp** (~48px, black `#000000`): e.g. `"21 deg"` --
+   display unit applied, formatted via `snprintf` into stack
+   buffer
+3. **Setpoint** (~20px, muted `#555555`): e.g. `"Set 22.5 deg"`
+   -- omitted if unavailable
 
 ### Lost Comms Screen
 
-When `comms_ok_ == false`: black fill, large `?` centered
-(~72px), small `"No connection"` below.
+When `comms_ok_ == false`: white fill, large `?` centered
+(~72px, black), small `"No connection"` below (muted).
 
 ---
 

@@ -14,8 +14,8 @@ constexpr float kRadToDeg = 180.0f / kPi;
 namespace esphome {
 namespace m5dial_thermostat {
 
-// Convert from temperature to the expanded angle range [120, 420],
-// which avoids wrapping while still covering the clockwise 300° span.
+// Convert temperature to the extended angle range [130, 410],
+// which avoids wraparound arithmetic for the 280° clockwise arc.
 float temp_to_angle(float temp, float min_temp, float max_temp) {
   if (std::isnan(min_temp) || std::isnan(max_temp) || max_temp <= min_temp) {
     return kArcStartAngleDeg;
@@ -50,75 +50,69 @@ float celsius_to_fahrenheit(float value) {
   return (value * 9.0f / 5.0f) + 32.0f;
 }
 
+// Returns overlay segments for heat mode (drawn on top of the gray track).
+//   out[0]: current segment [arc_start → current_temp] in kColorHeatLight.
+//           Always present when current_temp is valid.
+//   out[1]: active segment [current_temp → setpoint] in kColorHeatDark.
+//           Only when setpoint > current (more heating demanded).
 int compute_heat_segments(
     float current,
     float setpoint,
     float min_t,
     float max_t,
-    ArcSegment out[3]) {
+    ArcSegment out[2]) {
   if (out == nullptr || max_t <= min_t || std::isnan(current) ||
       std::isnan(setpoint) || std::isnan(min_t) || std::isnan(max_t)) {
     return 0;
   }
 
-  const float clamped_current = clamp_setpoint(current, min_t, max_t);
-  const float clamped_setpoint = clamp_setpoint(setpoint, min_t, max_t);
-
-  const float low = std::min(clamped_current, clamped_setpoint);
-  const float high = std::max(clamped_current, clamped_setpoint);
-
-  const float start_angle = temp_to_angle(min_t, min_t, max_t);
-  const float end_angle = temp_to_angle(max_t, min_t, max_t);
-  const float low_angle = temp_to_angle(low, min_t, max_t);
-  const float high_angle = temp_to_angle(high, min_t, max_t);
+  const float cur_angle = temp_to_angle(current, min_t, max_t);
 
   int count = 0;
-  if (start_angle < low_angle - 1e-6f) {
-    out[count++] = {start_angle, low_angle, kColorHeatLight};
+  // Current segment: left edge (min) → current_temp
+  if (kArcStartAngleDeg < cur_angle - 1e-4f) {
+    out[count++] = {kArcStartAngleDeg, cur_angle, kColorHeatLight};
   }
-  if (low_angle < high_angle - 1e-6f) {
-    out[count++] = {low_angle, high_angle, kColorHeatDark};
+  // Active segment: current_temp → setpoint (only if heating demanded)
+  if (setpoint > current + 1e-4f) {
+    const float sp_angle = temp_to_angle(setpoint, min_t, max_t);
+    if (cur_angle < sp_angle - 1e-4f) {
+      out[count++] = {cur_angle, sp_angle, kColorHeatDark};
+    }
   }
-  if (high_angle < end_angle - 1e-6f) {
-    out[count++] = {high_angle, end_angle, kColorTrack};
-  }
-
   return count;
 }
 
+// Returns overlay segments for cool mode (drawn on top of the gray track).
+//   out[0]: current segment [current_temp → arc_end] in kColorCoolLight.
+//           Always present when current_temp is valid.
+//   out[1]: active segment [setpoint → current_temp] in kColorCoolDark.
+//           Only when setpoint < current (more cooling demanded).
 int compute_cool_segments(
     float current,
     float setpoint,
     float min_t,
     float max_t,
-    ArcSegment out[3]) {
+    ArcSegment out[2]) {
   if (out == nullptr || max_t <= min_t || std::isnan(current) ||
       std::isnan(setpoint) || std::isnan(min_t) || std::isnan(max_t)) {
     return 0;
   }
 
-  const float clamped_current = clamp_setpoint(current, min_t, max_t);
-  const float clamped_setpoint = clamp_setpoint(setpoint, min_t, max_t);
-
-  const float low = std::min(clamped_current, clamped_setpoint);
-  const float high = std::max(clamped_current, clamped_setpoint);
-
-  const float start_angle = temp_to_angle(min_t, min_t, max_t);
-  const float end_angle = temp_to_angle(max_t, min_t, max_t);
-  const float low_angle = temp_to_angle(low, min_t, max_t);
-  const float high_angle = temp_to_angle(high, min_t, max_t);
+  const float cur_angle = temp_to_angle(current, min_t, max_t);
 
   int count = 0;
-  if (high_angle < end_angle - 1e-6f) {
-    out[count++] = {high_angle, end_angle, kColorCoolLight};
+  // Current segment: current_temp → right edge (max)
+  if (cur_angle < kArcEndAngleDeg - 1e-4f) {
+    out[count++] = {cur_angle, kArcEndAngleDeg, kColorCoolLight};
   }
-  if (low_angle < high_angle - 1e-6f) {
-    out[count++] = {low_angle, high_angle, kColorCoolDark};
+  // Active segment: setpoint → current_temp (only if cooling demanded)
+  if (setpoint < current - 1e-4f) {
+    const float sp_angle = temp_to_angle(setpoint, min_t, max_t);
+    if (sp_angle < cur_angle - 1e-4f) {
+      out[count++] = {sp_angle, cur_angle, kColorCoolDark};
+    }
   }
-  if (start_angle < low_angle - 1e-6f) {
-    out[count++] = {start_angle, low_angle, kColorTrack};
-  }
-
   return count;
 }
 
@@ -181,6 +175,14 @@ void draw_arc_segment(
   }
 }
 
+// Returns the active color for the setpoint dot border and arc active segment.
+static Color active_color_for_mode(HvacMode mode) {
+  if (mode == HvacMode::kHeat) return kColorHeatDark;
+  if (mode == HvacMode::kCool) return kColorCoolDark;
+  if (mode == HvacMode::kFanOnly) return kColorFan;
+  return kColorTrack;
+}
+
 static const char *mode_text_for_action(HvacAction action, HvacMode mode) {
   switch (action) {
     case HvacAction::kHeating:
@@ -229,49 +231,6 @@ static const char *get_setpoint_label_for_mode(HvacMode mode, HvacAction action)
   return mode_text_for_action(HvacAction::kUnknown, mode);
 }
 
-static Color dot_color_for_current_temp(
-    float current_temp,
-    float setpoint,
-    HvacMode mode,
-    float min_t,
-    float max_t) {
-  if (std::isnan(current_temp) || std::isnan(setpoint)) {
-    return kColorTrack;
-  }
-
-  const float clamped_current = clamp_setpoint(current_temp, min_t, max_t);
-  const float clamped_setpoint = clamp_setpoint(setpoint, min_t, max_t);
-
-  if (mode == HvacMode::kHeat) {
-    const float low = std::min(clamped_current, clamped_setpoint);
-    const float high = std::max(clamped_current, clamped_setpoint);
-    if (clamped_current <= low + 1e-6f) {
-      return kColorHeatLight;
-    }
-    if (clamped_current <= high + 1e-6f) {
-      return kColorHeatDark;
-    }
-    return kColorTrack;
-  }
-
-  if (mode == HvacMode::kCool) {
-    const float low = std::min(clamped_current, clamped_setpoint);
-    const float high = std::max(clamped_current, clamped_setpoint);
-    if (clamped_current >= high - 1e-6f) {
-      return kColorCoolLight;
-    }
-    if (clamped_current >= low - 1e-6f) {
-      return kColorCoolDark;
-    }
-    return kColorTrack;
-  }
-
-  if (mode == HvacMode::kFanOnly) {
-    return kColorFan;
-  }
-
-  return kColorTrack;
-}
 
 static void draw_text(
     display::Display &d,
@@ -284,7 +243,7 @@ static void draw_text(
     return;
   }
 
-  d.print(x, y, font, color, display::TextAlign::CENTER, text, Color(0, 0, 0));
+  d.print(x, y, font, color, display::TextAlign::CENTER, text, kColorBackground);
 }
 
 static void format_temperature(
@@ -305,71 +264,66 @@ void render_thermostat(
     display::Display &d,
     const ThermostatState &state,
     const ThermostatFonts &fonts) {
-  d.fill(Color(0, 0, 0));
+  // White background
+  d.fill(kColorBackground);
 
+  // Layer 1: full track arc
   draw_arc_segment(d, kDefaultCenterX, kDefaultCenterY, kDefaultInnerRadius,
                    kDefaultOuterRadius, kArcStartAngleDeg, kArcEndAngleDeg,
                    kColorTrack);
 
-  std::array<ArcSegment, 3> segments{};
+  // Layer 2: mode-dependent color overlays on top of the track
+  std::array<ArcSegment, 2> segments{};
   int segment_count = 0;
 
   if (state.hvac_mode == HvacMode::kHeat) {
     segment_count = compute_heat_segments(
-        state.current_temp, state.local_setpoint, state.min_temp, state.max_temp,
-        segments.data());
+        state.current_temp, state.local_setpoint,
+        state.min_temp, state.max_temp, segments.data());
   } else if (state.hvac_mode == HvacMode::kCool) {
     segment_count = compute_cool_segments(
-        state.current_temp, state.local_setpoint, state.min_temp, state.max_temp,
-        segments.data());
+        state.current_temp, state.local_setpoint,
+        state.min_temp, state.max_temp, segments.data());
   } else if (state.hvac_mode == HvacMode::kFanOnly) {
     segment_count = 1;
     segments[0] = {kArcStartAngleDeg, kArcEndAngleDeg, kColorFan};
   }
 
   for (int i = 0; i < segment_count; ++i) {
-    const ArcSegment &segment = segments[i];
     draw_arc_segment(d, kDefaultCenterX, kDefaultCenterY, kDefaultInnerRadius,
-                     kDefaultOuterRadius, segment.start_angle,
-                     segment.end_angle, segment.color);
+                     kDefaultOuterRadius, segments[i].start_angle,
+                     segments[i].end_angle, segments[i].color);
   }
 
+  // Layer 3: current temp dot -- dark grey, r=7 (50% of arc width)
   if (!std::isnan(state.current_temp)) {
     int x = 0;
     int y = 0;
     const float angle = temp_to_angle(
         state.current_temp, state.min_temp, state.max_temp);
-    angle_to_xy(kDefaultCenterX, kDefaultCenterY,
-                (static_cast<float>(kDefaultInnerRadius + kDefaultOuterRadius) / 2.0f),
-                angle, &x, &y);
-    d.filled_circle(x, y, 9,
-                    dot_color_for_current_temp(state.current_temp,
-                                              state.local_setpoint,
-                                              state.hvac_mode,
-                                              state.min_temp,
-                                              state.max_temp));
+    const float centerline =
+        static_cast<float>(kDefaultInnerRadius + kDefaultOuterRadius) * 0.5f;
+    angle_to_xy(kDefaultCenterX, kDefaultCenterY, centerline, angle, &x, &y);
+    d.filled_circle(x, y, kCurrentDotRadius, kColorCurrentDot);
   }
 
+  // Layer 4: setpoint dot -- white fill + 2 px border in active color.
+  // Total r=14 equals arc width so the dot exactly fills the ring.
   if (!std::isnan(state.local_setpoint) && state.hvac_mode != HvacMode::kOff) {
     int x = 0;
     int y = 0;
     const float angle = temp_to_angle(
         state.local_setpoint, state.min_temp, state.max_temp);
-    angle_to_xy(kDefaultCenterX, kDefaultCenterY,
-                (static_cast<float>(kDefaultInnerRadius + kDefaultOuterRadius) / 2.0f),
-                angle, &x, &y);
-
-    if (state.hvac_mode == HvacMode::kHeat) {
-      d.filled_circle(x, y, 18, kColorHeatDark);
-    } else if (state.hvac_mode == HvacMode::kCool) {
-      d.filled_circle(x, y, 18, kColorCoolDark);
-    } else if (state.hvac_mode == HvacMode::kFanOnly) {
-      d.filled_circle(x, y, 18, kColorFan);
-    } else {
-      d.filled_circle(x, y, 18, kColorTrack);
-    }
+    const float centerline =
+        static_cast<float>(kDefaultInnerRadius + kDefaultOuterRadius) * 0.5f;
+    angle_to_xy(kDefaultCenterX, kDefaultCenterY, centerline, angle, &x, &y);
+    // Border circle in active color, then white fill on top
+    d.filled_circle(x, y, kSetpointDotBorderRadius,
+                    active_color_for_mode(state.hvac_mode));
+    d.filled_circle(x, y, kSetpointDotFillRadius, kColorBackground);
   }
 
+  // Center text (white background, black text)
   draw_text(d, kDefaultCenterX, 20, fonts.mode,
             get_setpoint_label_for_mode(state.hvac_mode, state.hvac_action),
             kColorText);
@@ -391,12 +345,10 @@ void render_thermostat(
 }
 
 void render_no_connection(display::Display &d, const ThermostatFonts &fonts) {
-  d.fill(Color(0, 0, 0));
+  d.fill(kColorBackground);
   draw_arc_segment(d, kDefaultCenterX, kDefaultCenterY, kDefaultInnerRadius,
                    kDefaultOuterRadius, kArcStartAngleDeg, kArcEndAngleDeg,
                    kColorTrack);
-  draw_arc_segment(d, kDefaultCenterX, kDefaultCenterY, kDefaultInnerRadius,
-                   kDefaultOuterRadius, 180.0f, 360.0f, kColorHeatDark);
   draw_text(d, kDefaultCenterX, 58, fonts.error, "?", kColorText);
   draw_text(d, kDefaultCenterX, 150, fonts.mode, "No connection", kColorTextMuted);
 }

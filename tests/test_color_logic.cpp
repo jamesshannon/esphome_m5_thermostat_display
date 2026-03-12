@@ -13,7 +13,7 @@ static void test_clamp_and_nan() {
 }
 
 static void test_segments_nan() {
-  std::array<ArcSegment, 3> out{};
+  std::array<ArcSegment, 2> out{};
   assert(compute_heat_segments(NAN, 22.0f, 15.0f, 30.0f, out.data()) == 0);
   assert(compute_heat_segments(20.0f, NAN, 15.0f, 30.0f, out.data()) == 0);
   assert(compute_cool_segments(NAN, 22.0f, 15.0f, 30.0f, out.data()) == 0);
