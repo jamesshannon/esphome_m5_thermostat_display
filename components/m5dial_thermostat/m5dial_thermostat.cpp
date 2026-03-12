@@ -33,6 +33,7 @@ namespace
   constexpr char kNoteClick[] = "click:d=64,o=5,b=255:c,p,c";
 
   constexpr uint8_t kPinModeInputPullup = static_cast<uint8_t>(GPIO_MODE_INPUT);
+  constexpr uint8_t kPinModeOutput = static_cast<uint8_t>(GPIO_MODE_OUTPUT);
   constexpr gpio_num_t kBacklightPin = GPIO_NUM_9;
   constexpr ledc_mode_t kBacklightMode = LEDC_LOW_SPEED_MODE;
   constexpr ledc_timer_t kBacklightTimer = LEDC_TIMER_2;
@@ -303,6 +304,10 @@ namespace esphome
     {
       if (!this->backlight_ready_)
       {
+        // Fallback: force backlight pin as digital output if LEDC setup failed.
+        gpio_set_direction(kBacklightPin,
+                           static_cast<gpio_mode_t>(kPinModeOutput));
+        gpio_set_level(kBacklightPin, level > 0 ? 1 : 0);
         return;
       }
       const uint32_t duty = (static_cast<uint32_t>(level) * 1023U) / 255U;
