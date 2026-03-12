@@ -11,8 +11,12 @@ TEST_BINS := $(TEST_SOURCES:.cpp=)
 
 all: $(TEST_BINS)
 
+test_runtime_logic: test_runtime_logic.cpp
+	$(CXX) $(CXXFLAGS) -DESPHOME_STUBS $< \
+		$(UI_SOURCE) $(RUNTIME_SOURCE) -o $@
+
 %: %.cpp
-	$(CXX) $(CXXFLAGS) -DESPHOME_STUBS $< $(UI_SOURCE) $(RUNTIME_SOURCE) -o $@
+	$(CXX) $(CXXFLAGS) -DESPHOME_STUBS $< $(UI_SOURCE) -o $@
 
 test: $(TEST_BINS)
 	@for t in $(TEST_BINS); do ./$$t; done
