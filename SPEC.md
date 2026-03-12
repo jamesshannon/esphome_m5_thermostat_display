@@ -272,6 +272,18 @@ callbacks, encoder ticks, button presses, comms timeout). In
 `loop()`, check the flag and call `this->display_->update()` once
 per iteration at most, then clear the flag.
 
+To keep encoder polling responsive during rapid knob movement,
+cap redraws at 30 Hz:
+
+- Add `kMaxRedrawHz = 30` and
+  `kRedrawIntervalMs = 1000 / kMaxRedrawHz`
+- Track `last_redraw_ms_`
+- In `loop()`, call `display_->update()` only when
+  `needs_redraw_` is true and
+  `millis() - last_redraw_ms_ >= kRedrawIntervalMs`
+- If the interval has not elapsed, keep `needs_redraw_` set so
+  the next eligible frame is rendered
+
 The display's writer callback (set in `setup()` via
 `this->display_->set_writer(...)`) calls the rendering functions
 from `thermostat_ui.h`.
@@ -734,3 +746,17 @@ should work (cycling through the mode, idle brightness, setpoint, sound, etc).
 
 Heavily comment angle math, arc color logic, and the
 `local_setpoint_dirty_` sync pattern.
+
+---
+
+## TODO
+
+- Encoder reliability at very high rotation speed:
+  Polling-based quadrature decode can miss intermediate A/B
+  transitions if the loop is busy (for example, during display
+  rendering), resulting in fewer ticks than physical detents.
+- Recommended next step:
+  Move rotary decode to GPIO edge interrupts (or ESP32 PCNT) and
+  accumulate deltas in ISR-safe state. Drain accumulated counts in
+  `loop()` and call `on_encoder_tick_()` there. Keep ISR work
+  minimal (no logging, no display updates, no HA service calls).

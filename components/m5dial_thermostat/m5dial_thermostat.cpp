@@ -850,7 +850,8 @@ namespace esphome
       this->set_display_brightness_(true);
       this->needs_redraw_ = true;
       this->last_interaction_ = millis();
-      this->last_ha_update_ = millis();
+      this->last_ha_update_ = this->last_interaction_;
+      this->last_redraw_ms_ = 0;
       ESP_LOGI(TAG, "Setup complete: display=%p backlight=%p buzzer_ready=%s",
                this->display_, this->backlight_, this->buzzer_ready_ ? "yes" : "no");
 
@@ -914,10 +915,15 @@ namespace esphome
         this->set_display_brightness_(false);
       }
 
-      if (this->needs_redraw_ && this->display_ != nullptr)
+      const bool redraw_interval_elapsed =
+          this->last_redraw_ms_ == 0 ||
+          now - this->last_redraw_ms_ >= kRedrawIntervalMs;
+      if (this->needs_redraw_ && this->display_ != nullptr &&
+          redraw_interval_elapsed)
       {
         ESP_LOGD(TAG, "Display update triggered");
         this->display_->update();
+        this->last_redraw_ms_ = now;
         this->needs_redraw_ = false;
       }
     }

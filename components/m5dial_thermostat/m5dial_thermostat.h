@@ -122,6 +122,8 @@ namespace esphome
       // Number of raw quadrature counts required per tick (half-quad
       // equivalent): each mechanical detent produces ~2 counts.
       static constexpr int8_t kEncoderCountsPerTick = 2;
+      static constexpr uint8_t kMaxRedrawHz = 30;
+      static constexpr uint16_t kRedrawIntervalMs = 1000 / kMaxRedrawHz;
       static constexpr uint16_t kButtonDebounceMs = 60;
       static constexpr uint16_t kSetpointDebounceMs = 500;
 
@@ -162,6 +164,7 @@ namespace esphome
       uint32_t last_ha_update_{0};
       uint32_t last_interaction_{0};
       uint32_t last_button_ms_{0};
+      uint32_t last_redraw_ms_{0};
 
       uint8_t prev_encoder_state_{0};
       // Accumulates raw quadrature deltas; fires a tick every
