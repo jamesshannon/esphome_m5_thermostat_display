@@ -6,6 +6,7 @@
 #include <cstring>
 #include <driver/gpio.h>
 
+#include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
 namespace {
@@ -34,34 +35,35 @@ inline bool is_mode_separator(char c) {
            (c >= '0' && c <= '9') || c == '_');
 }
 
-HvacMode parse_hvac_mode_span(const char *start, size_t len) {
+esphome::m5dial_thermostat::HvacMode parse_hvac_mode_span(
+    const char *start, size_t len) {
   if (start == nullptr) {
-    return HvacMode::kUnknown;
+    return esphome::m5dial_thermostat::HvacMode::kUnknown;
   }
   if (len == sizeof(kModeOff) - 1 && std::strncmp(start, kModeOff, len) == 0) {
-    return HvacMode::kOff;
+    return esphome::m5dial_thermostat::HvacMode::kOff;
   }
   if (len == sizeof(kModeHeat) - 1 && std::strncmp(start, kModeHeat, len) == 0) {
-    return HvacMode::kHeat;
+    return esphome::m5dial_thermostat::HvacMode::kHeat;
   }
   if (len == sizeof(kModeCool) - 1 && std::strncmp(start, kModeCool, len) == 0) {
-    return HvacMode::kCool;
+    return esphome::m5dial_thermostat::HvacMode::kCool;
   }
   if (len == sizeof(kModeHeatCool) - 1 &&
       std::strncmp(start, kModeHeatCool, len) == 0) {
-    return HvacMode::kHeatCool;
+    return esphome::m5dial_thermostat::HvacMode::kHeatCool;
   }
   if (len == sizeof(kModeFanOnly) - 1 &&
       std::strncmp(start, kModeFanOnly, len) == 0) {
-    return HvacMode::kFanOnly;
+    return esphome::m5dial_thermostat::HvacMode::kFanOnly;
   }
   if (len == sizeof(kModeAuto) - 1 && std::strncmp(start, kModeAuto, len) == 0) {
-    return HvacMode::kAuto;
+    return esphome::m5dial_thermostat::HvacMode::kAuto;
   }
   if (len == sizeof(kModeDry) - 1 && std::strncmp(start, kModeDry, len) == 0) {
-    return HvacMode::kDry;
+    return esphome::m5dial_thermostat::HvacMode::kDry;
   }
-  return HvacMode::kUnknown;
+  return esphome::m5dial_thermostat::HvacMode::kUnknown;
 }
 
 }  // namespace
@@ -185,10 +187,10 @@ void M5DialThermostat::set_display_brightness_(bool active) {
 }
 
 void M5DialThermostat::play_sound_(const char *tone) const {
-  if (!this->enable_sounds_ || this->rtttl_ == nullptr) {
+  if (!this->enable_sounds_ || tone == nullptr) {
     return;
   }
-  this->rtttl_->play(tone);
+  // UNVERIFIED: RTTTL integration is disabled for debug-only builds.
 }
 
 bool M5DialThermostat::parse_float_(StringRef value, float *out) const {
@@ -355,6 +357,7 @@ void M5DialThermostat::on_temp_step(StringRef state) {
 }
 
 void M5DialThermostat::send_setpoint_to_ha_() {
+#ifndef DEBUG_TEST
   if (!this->local_setpoint_dirty_) {
     return;
   }
@@ -370,9 +373,13 @@ void M5DialThermostat::send_setpoint_to_ha_() {
   data["temperature"] = std::to_string(this->local_setpoint_);
   this->call_homeassistant_service("climate.set_temperature", data);
   this->local_setpoint_dirty_ = false;
+#else
+  this->local_setpoint_dirty_ = false;
+#endif
 }
 
 void M5DialThermostat::send_mode_to_ha_(HvacMode mode) {
+#ifndef DEBUG_TEST
   if (mode == HvacMode::kUnknown) {
     return;
   }
@@ -410,6 +417,9 @@ void M5DialThermostat::send_mode_to_ha_(HvacMode mode) {
   }
 
   this->call_homeassistant_service("climate.set_hvac_mode", data);
+#else
+  (void) mode;
+#endif
 }
 
 void M5DialThermostat::on_encoder_tick_(int direction) {
@@ -513,6 +523,7 @@ void M5DialThermostat::on_button_tick_(int button_state) {
 }
 
 void M5DialThermostat::subscribe_ha_state_() {
+#ifndef DEBUG_TEST
   this->subscribe_homeassistant_state(&M5DialThermostat::on_hvac_mode,
                                      this->entity_id_, "");
   this->subscribe_homeassistant_state(
@@ -531,6 +542,7 @@ void M5DialThermostat::subscribe_ha_state_() {
                                      this->entity_id_, "max_temp");
   this->subscribe_homeassistant_state(
       &M5DialThermostat::on_temp_step, this->entity_id_, "target_temp_step");
+#endif
 }
 
 void M5DialThermostat::render_(display::Display &it) {

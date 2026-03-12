@@ -5,9 +5,7 @@
 
 #include "esphome/components/api/custom_api_device.h"
 #include "esphome/components/display/display.h"
-#include "esphome/components/font/font.h"
 #include "esphome/components/output/float_output.h"
-#include "esphome/components/rtttl/rtttl.h"
 #include "esphome/components/select/select.h"
 #include "esphome/core/component.h"
 #include "esphome/core/string_ref.h"
@@ -41,11 +39,12 @@ class M5DialThermostat : public Component, public api::CustomAPIDevice {
   void set_entity_id(const std::string &entity_id) { this->entity_id_ = entity_id; }
   void set_display(display::Display *display) { this->display_ = display; }
   void set_backlight(output::FloatOutput *backlight) { this->backlight_ = backlight; }
-  void set_rtttl(rtttl::Rtttl *rtttl) { this->rtttl_ = rtttl; }
-  void set_font_mode(font::Font *font) { this->font_mode_ = font; }
-  void set_font_setpoint(font::Font *font) { this->font_setpoint_ = font; }
-  void set_font_temp(font::Font *font) { this->font_temp_ = font; }
-  void set_font_error(font::Font *font) { this->font_error_ = font; }
+  void set_font_mode(display::BaseFont *font) { this->font_mode_ = font; }
+  void set_font_setpoint(display::BaseFont *font) {
+    this->font_setpoint_ = font;
+  }
+  void set_font_temp(display::BaseFont *font) { this->font_temp_ = font; }
+  void set_font_error(display::BaseFont *font) { this->font_error_ = font; }
   void set_unit_select(UnitSelect *unit_select) { this->unit_select_ = unit_select; }
   void set_active_brightness(int brightness) {
     this->active_brightness_ = static_cast<uint8_t>(brightness);
@@ -117,11 +116,10 @@ class M5DialThermostat : public Component, public api::CustomAPIDevice {
   std::string entity_id_;
   display::Display *display_{nullptr};
   output::FloatOutput *backlight_{nullptr};
-  rtttl::Rtttl *rtttl_{nullptr};
-  font::Font *font_mode_{nullptr};
-  font::Font *font_setpoint_{nullptr};
-  font::Font *font_temp_{nullptr};
-  font::Font *font_error_{nullptr};
+  display::BaseFont *font_mode_{nullptr};
+  display::BaseFont *font_setpoint_{nullptr};
+  display::BaseFont *font_temp_{nullptr};
+  display::BaseFont *font_error_{nullptr};
   UnitSelect *unit_select_{nullptr};
 
   float current_temp_{NAN};

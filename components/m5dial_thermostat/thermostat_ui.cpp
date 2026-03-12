@@ -277,7 +277,7 @@ static void draw_text(
     display::Display &d,
     int x,
     int y,
-    font::Font *font,
+    display::BaseFont *font,
     const char *text,
     Color color) {
   if (font == nullptr || text == nullptr) {

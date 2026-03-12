@@ -4,7 +4,6 @@
 #include "tests/esphome_stubs.h"
 #else
 #include "esphome/components/display/display.h"
-#include "esphome/components/font/font.h"
 #endif
 
 #include <array>
@@ -52,10 +51,10 @@ struct ThermostatState {
 };
 
 struct ThermostatFonts {
-  font::Font *mode{nullptr};
-  font::Font *setpoint{nullptr};
-  font::Font *temp{nullptr};
-  font::Font *error{nullptr};
+  display::BaseFont *mode{nullptr};
+  display::BaseFont *setpoint{nullptr};
+  display::BaseFont *temp{nullptr};
+  display::BaseFont *error{nullptr};
 };
 
 constexpr float kArcStartAngleDeg = 120.0f;
