@@ -252,7 +252,6 @@ component class (use `this->` prefix for all access):
 | `font_mode_` | `font::Font*` | Optional user-configured font |
 | `font_setpoint_` | `font::Font*` | Optional user-configured font |
 | `font_temp_` | `font::Font*` | Optional user-configured font |
-| `font_error_` | `font::Font*` | Optional user-configured font |
 | `unit_select_` | `UnitSelect*` | Auto-created |
 
 ---
@@ -697,7 +696,6 @@ struct ThermostatFonts {
   font::Font *mode;      // 16px
   font::Font *setpoint;  // 20px
   font::Font *temp;      // 48px
-  font::Font *error;     // 72px
 };
 
 void render_thermostat(
@@ -718,7 +716,7 @@ the display writer callback and passes it to these functions.
 
 ## Fonts
 
-Four sizes, Roboto via `gfonts://Roboto`, are configured in user YAML
+Three sizes, Roboto via `gfonts://Roboto`, are configured in user YAML
 and passed by ID into the component. Use `bpp: 4` for anti-aliased rendering on the
 color display.
 
@@ -727,11 +725,7 @@ color display.
 | 16px | `font_mode_` | Mode label |
 | 20px | `font_setpoint_` | Setpoint value |
 | 48px | `font_temp_` | Current temperature |
-| 72px | `font_error_` | Optional large status glyphs |
-
 Single shared glyph set is simplest given ESP32-S3 resources.
-If flash becomes tight, per-size glyph sets are possible (72px
-can be reduced to only required status glyphs).
 
 ---
 

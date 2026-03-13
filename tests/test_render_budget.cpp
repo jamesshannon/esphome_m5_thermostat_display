@@ -16,12 +16,10 @@ static ThermostatFonts make_fonts() {
   static display::BaseFont mode_font;
   static display::BaseFont setpoint_font;
   static display::BaseFont temp_font;
-  static display::BaseFont error_font;
   return ThermostatFonts{
       .mode = &mode_font,
       .setpoint = &setpoint_font,
       .temp = &temp_font,
-      .error = &error_font,
   };
 }
 

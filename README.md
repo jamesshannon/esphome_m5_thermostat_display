@@ -102,7 +102,6 @@ m5dial_thermostat:
   # font_mode_id: font_mode
   # font_setpoint_id: font_setpoint
   # font_temp_id: font_temp
-  # font_error_id: font_error
   # Optional settings
   # active_brightness: 255
   # idle_brightness: 50

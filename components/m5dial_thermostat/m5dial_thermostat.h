@@ -42,7 +42,6 @@ namespace esphome
         this->font_setpoint_ = font;
       }
       void set_font_temp(display::BaseFont *font) { this->font_temp_ = font; }
-      void set_font_error(display::BaseFont *font) { this->font_error_ = font; }
       void set_unit_select(UnitSelect *unit_select) { this->unit_select_ = unit_select; }
       void set_active_brightness(int brightness)
       {
@@ -145,7 +144,6 @@ namespace esphome
       display::BaseFont *font_mode_{nullptr};
       display::BaseFont *font_setpoint_{nullptr};
       display::BaseFont *font_temp_{nullptr};
-      display::BaseFont *font_error_{nullptr};
       UnitSelect *unit_select_{nullptr};
 
       float current_temp_{NAN};

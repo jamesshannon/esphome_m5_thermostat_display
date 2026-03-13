@@ -62,7 +62,6 @@ namespace esphome
       display::BaseFont *mode{nullptr};
       display::BaseFont *setpoint{nullptr};
       display::BaseFont *temp{nullptr};
-      display::BaseFont *error{nullptr};
     };
 
     // Arc spans [130, 410] degrees (280° span, gap at bottom).

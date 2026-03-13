@@ -883,7 +883,6 @@ namespace esphome
           .mode = this->font_mode_,
           .setpoint = this->font_setpoint_,
           .temp = this->font_temp_,
-          .error = this->font_error_,
       };
 
       if (!this->comms_ok_)

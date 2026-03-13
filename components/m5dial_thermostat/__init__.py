@@ -31,7 +31,6 @@ CONF_COMMS_TIMEOUT = "comms_timeout"
 CONF_FONT_MODE_ID = "font_mode_id"
 CONF_FONT_SETPOINT_ID = "font_setpoint_id"
 CONF_FONT_TEMP_ID = "font_temp_id"
-CONF_FONT_ERROR_ID = "font_error_id"
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(M5DialThermostat),
@@ -45,7 +44,6 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_FONT_MODE_ID): cv.use_id(EspFont),
         cv.Optional(CONF_FONT_SETPOINT_ID): cv.use_id(EspFont),
         cv.Optional(CONF_FONT_TEMP_ID): cv.use_id(EspFont),
-        cv.Optional(CONF_FONT_ERROR_ID): cv.use_id(EspFont),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -76,8 +74,6 @@ async def to_code(config):
         cg.add(var.set_font_setpoint(await cg.get_variable(config[CONF_FONT_SETPOINT_ID])))
     if CONF_FONT_TEMP_ID in config:
         cg.add(var.set_font_temp(await cg.get_variable(config[CONF_FONT_TEMP_ID])))
-    if CONF_FONT_ERROR_ID in config:
-        cg.add(var.set_font_error(await cg.get_variable(config[CONF_FONT_ERROR_ID])))
 
     unit_select = await _create_unit_select(str(config[CONF_ID]), var)
     cg.add(var.set_unit_select(unit_select))
