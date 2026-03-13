@@ -191,6 +191,8 @@ namespace esphome
       this->encoder_accumulator_ = 0;
       this->prev_button_state_ =
           gpio_get_level(static_cast<gpio_num_t>(kButtonPin));
+      this->button_press_start_ms_ = 0;
+      this->button_long_press_handled_ = false;
 
       const esp_err_t install_err = gpio_install_isr_service(0);
       if (install_err != ESP_OK && install_err != ESP_ERR_INVALID_STATE)
@@ -782,13 +784,43 @@ namespace esphome
       this->play_sound_(kNoteClick);
     }
 
-    void M5DialThermostat::on_button_tick_(int button_state)
+    void M5DialThermostat::on_button_tick_(int button_state,
+                                           bool allow_user_input)
     {
       const uint32_t now = millis();
-      if (button_state == 0 && this->prev_button_state_ == 1 &&
+      const bool pressed = (button_state == 0);
+      const bool was_pressed = (this->prev_button_state_ == 0);
+
+      if (pressed && !was_pressed &&
           now - this->last_button_ms_ >= kButtonDebounceMs)
       {
-        this->on_mode_button_();
+        this->button_press_start_ms_ = now;
+        this->button_long_press_handled_ = false;
+      }
+
+#ifdef DEBUG_TEST
+      if (pressed && was_pressed && !this->button_long_press_handled_ &&
+          this->button_press_start_ms_ != 0 &&
+          now - this->button_press_start_ms_ >= kDebugToggleLongPressMs)
+      {
+        this->debug_force_no_connection_ = !this->debug_force_no_connection_;
+        this->comms_ok_ = !this->debug_force_no_connection_;
+        this->needs_redraw_ = true;
+        this->button_long_press_handled_ = true;
+        this->last_button_ms_ = now;
+        ESP_LOGI(TAG, "DEBUG_TEST button long-press: simulated comms %s",
+                 this->comms_ok_ ? "connected" : "disconnected");
+      }
+#endif
+
+      if (!pressed && was_pressed)
+      {
+        if (!this->button_long_press_handled_ &&
+            now - this->last_button_ms_ >= kButtonDebounceMs &&
+            allow_user_input)
+        {
+          this->on_mode_button_();
+        }
         this->last_button_ms_ = now;
       }
       this->prev_button_state_ = button_state;
@@ -932,7 +964,7 @@ namespace esphome
 #ifndef DEBUG_TEST
       const bool allow_user_input = this->comms_ok_;
 #else
-      const bool allow_user_input = true;
+      const bool allow_user_input = !this->debug_force_no_connection_;
 #endif
 
       this->process_user_input_(allow_user_input);
@@ -960,14 +992,14 @@ namespace esphome
 
     void M5DialThermostat::process_user_input_(bool allow_user_input)
     {
+      const int button_state =
+          gpio_get_level(static_cast<gpio_num_t>(kButtonPin));
+      this->on_button_tick_(button_state, allow_user_input);
       if (!allow_user_input)
       {
         return;
       }
       this->process_encoder_counts_();
-      const int button_state =
-          gpio_get_level(static_cast<gpio_num_t>(kButtonPin));
-      this->on_button_tick_(button_state);
     }
 
     void M5DialThermostat::apply_backlight_policy_(uint32_t now_ms)

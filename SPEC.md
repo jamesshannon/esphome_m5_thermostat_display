@@ -740,6 +740,16 @@ testing without a nearby HomeAssitant instance.
 `current_temperature` should be hardcoded to 25c and all other functionality
 should work (cycling through the mode, idle brightness, setpoint, sound, etc).
 
+In `DEBUG_TEST`, long-press the mode button (GPIO42) for ~1.2s to toggle
+simulated comms state at runtime:
+- long-press once to force disconnected (`comms_ok_ = false`) and show the
+  reconnect spinner screen
+- long-press again to restore connected state (`comms_ok_ = true`)
+
+While forced disconnected in `DEBUG_TEST`, rotary input and short mode-button
+presses are ignored to match normal non-debug comms-loss behavior. The debug
+long-press toggle remains active so reconnection can be tested without reflash.
+
 --
 
 ## Out of Scope

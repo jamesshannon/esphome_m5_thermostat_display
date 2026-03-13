@@ -88,7 +88,7 @@ namespace esphome
       static void encoder_isr_handler_(void *arg);
       void process_encoder_counts_();
       void on_encoder_tick_(int direction);
-      void on_button_tick_(int button_state);
+      void on_button_tick_(int button_state, bool allow_user_input);
       void on_mode_button_();
       int find_mode_index_(HvacMode mode) const;
 
@@ -125,6 +125,9 @@ namespace esphome
       static constexpr uint16_t kRedrawIntervalMs = 1000 / kMaxRedrawHz;
       static constexpr uint16_t kButtonDebounceMs = 60;
       static constexpr uint16_t kSetpointDebounceMs = 500;
+#ifdef DEBUG_TEST
+      static constexpr uint16_t kDebugToggleLongPressMs = 1200;
+#endif
       static constexpr uint8_t kNoConnectionAnimHz = 10;
       static constexpr uint16_t kNoConnectionAnimIntervalMs =
           1000 / kNoConnectionAnimHz;
@@ -176,6 +179,11 @@ namespace esphome
       // kEncoderCountsPerTick counts to align with detents.
       int32_t encoder_accumulator_{0};
       int prev_button_state_{1};
+      uint32_t button_press_start_ms_{0};
+      bool button_long_press_handled_{false};
+#ifdef DEBUG_TEST
+      bool debug_force_no_connection_{false};
+#endif
 
       uint8_t active_brightness_{255};
       uint8_t idle_brightness_{50};
