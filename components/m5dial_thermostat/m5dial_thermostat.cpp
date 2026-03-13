@@ -826,6 +826,7 @@ namespace esphome
       state.hvac_action = this->hvac_action_;
       state.display_fahrenheit = this->display_fahrenheit_;
       state.comms_ok = this->comms_ok_;
+      state.reconnect_spinner_start_deg = this->reconnect_spinner_start_deg_;
 
       ThermostatFonts fonts{
           .mode = this->font_mode_,
@@ -836,7 +837,7 @@ namespace esphome
 
       if (!this->comms_ok_)
       {
-        render_no_connection(it, fonts);
+        render_no_connection(it, state, fonts);
         return;
       }
 
@@ -871,6 +872,8 @@ namespace esphome
       this->last_interaction_ = millis();
       this->last_ha_update_ = this->last_interaction_;
       this->last_redraw_ms_ = 0;
+      this->last_no_connection_anim_ms_ = 0;
+      this->reconnect_spinner_start_deg_ = 0.0f;
       ESP_LOGI(TAG, "Setup complete: display=%p buzzer_ready=%s",
                this->display_, this->buzzer_ready_ ? "yes" : "no");
 
@@ -908,6 +911,7 @@ namespace esphome
 
       this->process_user_input_(allow_user_input);
       this->apply_backlight_policy_(now_ms);
+      this->update_no_connection_animation_(now_ms);
       this->try_redraw_(now_ms);
     }
 
@@ -951,6 +955,21 @@ namespace esphome
       {
         this->set_display_brightness_(false);
       }
+    }
+
+    void M5DialThermostat::update_no_connection_animation_(uint32_t now_ms)
+    {
+      if (!should_tick_no_connection_animation(
+              this->comms_ok_, now_ms, this->last_no_connection_anim_ms_,
+              kNoConnectionAnimIntervalMs))
+      {
+        return;
+      }
+      this->last_no_connection_anim_ms_ = now_ms;
+      const uint32_t frame = now_ms / kNoConnectionAnimIntervalMs;
+      const uint32_t angle = (frame * kNoConnectionSpinnerStepDeg) % 360U;
+      this->reconnect_spinner_start_deg_ = static_cast<float>(angle);
+      this->needs_redraw_ = true;
     }
 
     bool M5DialThermostat::try_redraw_(uint32_t now_ms)

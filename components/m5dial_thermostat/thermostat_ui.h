@@ -54,6 +54,7 @@ namespace esphome
       HvacAction hvac_action;
       bool display_fahrenheit;
       bool comms_ok;
+      float reconnect_spinner_start_deg;
     };
 
     struct ThermostatFonts
@@ -92,6 +93,8 @@ namespace esphome
     constexpr Color kColorCurrentDot = Color(0x7F, 0x7F, 0x7F);
     constexpr Color kColorText = Color(0x00, 0x00, 0x00);
     constexpr Color kColorTextMuted = Color(0x55, 0x55, 0x55);
+    constexpr Color kColorReconnectTrack = Color(0xCD, 0xD4, 0xDD);
+    constexpr Color kColorReconnectSpinner = Color(0x00, 0x86, 0xCC);
 
     float temp_to_angle(float temp, float min_temp, float max_temp);
 
@@ -133,7 +136,10 @@ namespace esphome
         const ThermostatState &state,
         const ThermostatFonts &fonts);
 
-    void render_no_connection(display::Display &d, const ThermostatFonts &fonts);
+    void render_no_connection(
+        display::Display &d,
+        const ThermostatState &state,
+        const ThermostatFonts &fonts);
 
   } // namespace m5dial_thermostat
 } // namespace esphome

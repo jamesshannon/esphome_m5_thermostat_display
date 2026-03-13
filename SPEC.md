@@ -313,7 +313,7 @@ restore (any subscription callback fires), set
 `this->comms_ok_ = true`.
 
 **When `comms_ok_ == false`:**
-- Display the lost comms screen (large centered `?`, see UI)
+- Display the reconnect spinner screen (see UI)
 - All encoder and button input is ignored
 - Keep backlight at `active_brightness_` so the error screen remains
   visible while disconnected
@@ -668,8 +668,8 @@ vertically and the other text is placed in relation to *Current temp*.
 
 ### Lost Comms Screen
 
-When `comms_ok_ == false`: white fill, large `?` centered
-(~72px, black), small `"No connection"` below (muted).
+When `comms_ok_ == false`: white fill, high-contrast reconnect spinner
+arc, and centered `"Reconnecting..."` text.
 
 ---
 
@@ -687,6 +687,7 @@ struct ThermostatState {
   HvacAction hvac_action;
   bool display_fahrenheit;
   bool comms_ok;
+  float reconnect_spinner_start_deg;
 };
 
 struct ThermostatFonts {
@@ -703,6 +704,7 @@ void render_thermostat(
 
 void render_no_connection(
     display::Display &d,
+    const ThermostatState &state,
     const ThermostatFonts &fonts);
 ```
 
@@ -722,11 +724,11 @@ color display.
 | 16px | `font_mode_` | Mode label |
 | 20px | `font_setpoint_` | Setpoint value |
 | 48px | `font_temp_` | Current temperature |
-| 72px | `font_error_` | Lost comms `?` |
+| 72px | `font_error_` | Optional large status glyphs |
 
 Single shared glyph set is simplest given ESP32-S3 resources.
 If flash becomes tight, per-size glyph sets are possible (72px
-needs only `?` and space).
+can be reduced to only required status glyphs).
 
 ---
 

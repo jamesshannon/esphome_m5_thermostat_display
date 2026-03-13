@@ -110,6 +110,7 @@ namespace esphome
       bool update_comms_timeout_state_(uint32_t now_ms);
       void process_user_input_(bool allow_user_input);
       void apply_backlight_policy_(uint32_t now_ms);
+      void update_no_connection_animation_(uint32_t now_ms);
       bool try_redraw_(uint32_t now_ms);
 
       static constexpr uint8_t kEncoderPinA = 40;
@@ -124,6 +125,10 @@ namespace esphome
       static constexpr uint16_t kRedrawIntervalMs = 1000 / kMaxRedrawHz;
       static constexpr uint16_t kButtonDebounceMs = 60;
       static constexpr uint16_t kSetpointDebounceMs = 500;
+      static constexpr uint8_t kNoConnectionAnimHz = 10;
+      static constexpr uint16_t kNoConnectionAnimIntervalMs =
+          1000 / kNoConnectionAnimHz;
+      static constexpr uint16_t kNoConnectionSpinnerStepDeg = 18;
 
       static constexpr int8_t kEncoderTable[4][4] = {
           {0, -1, 1, 0},
@@ -162,6 +167,8 @@ namespace esphome
       uint32_t last_interaction_{0};
       uint32_t last_button_ms_{0};
       uint32_t last_redraw_ms_{0};
+      uint32_t last_no_connection_anim_ms_{0};
+      float reconnect_spinner_start_deg_{0.0f};
 
       volatile uint8_t encoder_isr_state_{0};
       volatile int32_t encoder_delta_counts_{0};

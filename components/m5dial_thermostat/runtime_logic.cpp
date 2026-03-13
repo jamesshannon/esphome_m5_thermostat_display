@@ -101,6 +101,21 @@ namespace esphome
       return now_ms - last_redraw_ms >= redraw_interval_ms;
     }
 
+    bool should_tick_no_connection_animation(bool comms_ok, uint32_t now_ms,
+                                             uint32_t last_anim_tick_ms,
+                                             uint16_t anim_interval_ms)
+    {
+      if (comms_ok)
+      {
+        return false;
+      }
+      if (last_anim_tick_ms == 0 || now_ms < last_anim_tick_ms)
+      {
+        return true;
+      }
+      return now_ms - last_anim_tick_ms >= anim_interval_ms;
+    }
+
     int next_wrapped_index(int current_index, int count)
     {
       if (count <= 0 || current_index < 0 || current_index >= count)

@@ -447,14 +447,27 @@ namespace esphome
       }
     }
 
-    void render_no_connection(display::Display &d, const ThermostatFonts &fonts)
+    void render_no_connection(
+        display::Display &d,
+        const ThermostatState &state,
+        const ThermostatFonts &fonts)
     {
       d.fill(kColorBackground);
-      draw_arc_segment(d, kDefaultCenterX, kDefaultCenterY, kDefaultInnerRadius,
-                       kDefaultOuterRadius, kArcStartAngleDeg, kArcEndAngleDeg,
-                       kColorTrack);
-      draw_text(d, kDefaultCenterX, 58, fonts.error, "?", kColorText);
-      draw_text(d, kDefaultCenterX, 150, fonts.mode, "No connection", kColorTextMuted);
+      constexpr int kSpinnerInnerRadius = 90;
+      constexpr int kSpinnerOuterRadius = 110;
+      constexpr float kSpinnerSweepDeg = 72.0f;
+
+      const float start = state.reconnect_spinner_start_deg;
+      const float end = start + kSpinnerSweepDeg;
+      draw_arc_segment(d, kDefaultCenterX, kDefaultCenterY, kSpinnerInnerRadius,
+                       kSpinnerOuterRadius, 0.0f, 360.0f,
+                       kColorReconnectTrack);
+      draw_arc_segment(d, kDefaultCenterX, kDefaultCenterY, kSpinnerInnerRadius,
+                       kSpinnerOuterRadius, start, end,
+                       kColorReconnectSpinner);
+
+      draw_text(d, kDefaultCenterX, 120, fonts.mode, "Reconnecting...",
+                kColorTextMuted);
     }
 
   } // namespace m5dial_thermostat

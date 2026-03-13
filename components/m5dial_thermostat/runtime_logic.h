@@ -58,6 +58,11 @@ namespace esphome
                                uint32_t last_redraw_ms, uint32_t now_ms,
                                uint16_t redraw_interval_ms);
 
+    // Returns true when no-connection animation should advance a frame.
+    bool should_tick_no_connection_animation(bool comms_ok, uint32_t now_ms,
+                                             uint32_t last_anim_tick_ms,
+                                             uint16_t anim_interval_ms);
+
     // Computes the next wrapped index. Returns -1 on invalid inputs.
     int next_wrapped_index(int current_index, int count);
 

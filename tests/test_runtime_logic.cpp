@@ -61,6 +61,14 @@ static void test_should_trigger_redraw() {
   assert(should_trigger_redraw(true, true, 1967U, 2000U, 33U));
 }
 
+static void test_should_tick_no_connection_animation() {
+  assert(!should_tick_no_connection_animation(true, 1000U, 0U, 100U));
+  assert(should_tick_no_connection_animation(false, 1000U, 0U, 100U));
+  assert(should_tick_no_connection_animation(false, 1000U, 1100U, 100U));
+  assert(!should_tick_no_connection_animation(false, 1099U, 1000U, 100U));
+  assert(should_tick_no_connection_animation(false, 1100U, 1000U, 100U));
+}
+
 static void test_next_wrapped_index() {
   assert(next_wrapped_index(0, 4) == 1);
   assert(next_wrapped_index(3, 4) == 0);
@@ -110,6 +118,7 @@ int main() {
   test_should_idle_dim();
   test_should_mark_comms_offline();
   test_should_trigger_redraw();
+  test_should_tick_no_connection_animation();
   test_next_wrapped_index();
   test_adjust_setpoint();
   test_backlight_mapping();
