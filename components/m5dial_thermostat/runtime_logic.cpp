@@ -1,5 +1,7 @@
 #include "runtime_logic.h"
 
+#include <cmath>
+
 namespace esphome
 {
   namespace m5dial_thermostat
@@ -71,6 +73,76 @@ namespace esphome
         return false;
       }
       return now_ms - last_interaction_ms > idle_timeout_ms;
+    }
+
+    bool should_mark_comms_offline(bool comms_ok, uint32_t now_ms,
+                                   uint32_t last_ha_update_ms,
+                                   uint32_t comms_timeout_ms)
+    {
+      if (!comms_ok || now_ms < last_ha_update_ms)
+      {
+        return false;
+      }
+      return now_ms - last_ha_update_ms > comms_timeout_ms;
+    }
+
+    bool should_trigger_redraw(bool needs_redraw, bool has_display,
+                               uint32_t last_redraw_ms, uint32_t now_ms,
+                               uint16_t redraw_interval_ms)
+    {
+      if (!needs_redraw || !has_display)
+      {
+        return false;
+      }
+      if (last_redraw_ms == 0 || now_ms < last_redraw_ms)
+      {
+        return true;
+      }
+      return now_ms - last_redraw_ms >= redraw_interval_ms;
+    }
+
+    int next_wrapped_index(int current_index, int count)
+    {
+      if (count <= 0 || current_index < 0 || current_index >= count)
+      {
+        return -1;
+      }
+      return (current_index + 1) % count;
+    }
+
+    SetpointAdjustResult adjust_setpoint(float local_setpoint_c,
+                                         float target_temp_c,
+                                         float min_temp_c,
+                                         float max_temp_c,
+                                         float temp_step_c, int direction)
+    {
+      if (temp_step_c <= 0.0f || direction == 0 || std::isnan(target_temp_c))
+      {
+        return SetpointAdjustResult{.changed = false, .new_setpoint_c = local_setpoint_c};
+      }
+
+      float seed_setpoint_c = local_setpoint_c;
+      if (std::isnan(seed_setpoint_c))
+      {
+        seed_setpoint_c = target_temp_c;
+      }
+
+      const float delta = direction > 0 ? temp_step_c : -temp_step_c;
+      float next_setpoint_c = seed_setpoint_c + delta;
+      if (next_setpoint_c < min_temp_c)
+      {
+        next_setpoint_c = min_temp_c;
+      }
+      if (next_setpoint_c > max_temp_c)
+      {
+        next_setpoint_c = max_temp_c;
+      }
+
+      const bool changed = std::fabs(next_setpoint_c - seed_setpoint_c) > 1e-6f;
+      return SetpointAdjustResult{
+          .changed = changed,
+          .new_setpoint_c = changed ? next_setpoint_c : local_setpoint_c,
+      };
     }
 
     uint8_t map_backlight_level(uint8_t level, bool active_low)

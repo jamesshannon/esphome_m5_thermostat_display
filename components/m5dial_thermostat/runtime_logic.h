@@ -27,6 +27,12 @@ namespace esphome
       int32_t counterclockwise_ticks;
     };
 
+    struct SetpointAdjustResult
+    {
+      bool changed;
+      float new_setpoint_c;
+    };
+
     // Returns frequency/duration for a logical sound event.
     ToneSpec get_tone_spec(SoundEvent event);
 
@@ -41,6 +47,26 @@ namespace esphome
     // Returns true when interaction idle timeout has elapsed.
     bool should_idle_dim(uint32_t now_ms, uint32_t last_interaction_ms,
                          uint32_t idle_timeout_ms);
+
+    // Returns true when comms should be marked offline due to timeout.
+    bool should_mark_comms_offline(bool comms_ok, uint32_t now_ms,
+                                   uint32_t last_ha_update_ms,
+                                   uint32_t comms_timeout_ms);
+
+    // Returns true when a pending frame should be rendered this loop.
+    bool should_trigger_redraw(bool needs_redraw, bool has_display,
+                               uint32_t last_redraw_ms, uint32_t now_ms,
+                               uint16_t redraw_interval_ms);
+
+    // Computes the next wrapped index. Returns -1 on invalid inputs.
+    int next_wrapped_index(int current_index, int count);
+
+    // Applies a setpoint step and clamp. Returns changed=false on no-op.
+    SetpointAdjustResult adjust_setpoint(float local_setpoint_c,
+                                         float target_temp_c,
+                                         float min_temp_c,
+                                         float max_temp_c,
+                                         float temp_step_c, int direction);
 
     // Converts logical brightness [0..255] to hardware level considering polarity.
     uint8_t map_backlight_level(uint8_t level, bool active_low);

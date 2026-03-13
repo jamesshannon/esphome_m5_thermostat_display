@@ -36,17 +36,18 @@ namespace
   constexpr uint8_t kPinModeOutput = static_cast<uint8_t>(GPIO_MODE_OUTPUT);
   constexpr bool kBacklightActiveLow = false;
   constexpr gpio_num_t kBacklightPin = GPIO_NUM_9;
+  constexpr uint32_t kBacklightPwmFrequencyHz = 5000;
   constexpr ledc_mode_t kBacklightMode = LEDC_LOW_SPEED_MODE;
   constexpr ledc_timer_t kBacklightTimer = LEDC_TIMER_2;
   constexpr ledc_channel_t kBacklightChannel = LEDC_CHANNEL_2;
   constexpr ledc_timer_bit_t kBacklightResolution = LEDC_TIMER_10_BIT;
   constexpr gpio_num_t kBuzzerPin = GPIO_NUM_3;
+  constexpr uint32_t kBuzzerBaseFrequencyHz = 1800;
   constexpr ledc_mode_t kBuzzerMode = LEDC_LOW_SPEED_MODE;
   constexpr ledc_timer_t kBuzzerTimer = LEDC_TIMER_1;
   constexpr ledc_channel_t kBuzzerChannel = LEDC_CHANNEL_1;
   constexpr ledc_timer_bit_t kBuzzerResolution = LEDC_TIMER_10_BIT;
-  // ~12.5% duty cycle (128/1023) -- quieter than 50% while audible.
-  // Raise to 256 if inaudible in practice.
+  // ~6.25% duty cycle (64/1023) keeps click tones short and subtle.
   constexpr uint32_t kBuzzerDuty = 64;
 
   inline bool is_mode_separator(char c)
@@ -155,46 +156,6 @@ namespace esphome
       return HvacAction::kUnknown;
     }
 
-    const char *M5DialThermostat::action_to_label(HvacAction action,
-                                                  HvacMode mode)
-    {
-      switch (action)
-      {
-      case HvacAction::kHeating:
-        return "Heating";
-      case HvacAction::kCooling:
-        return "Cooling";
-      case HvacAction::kFan:
-        return "Fan";
-      case HvacAction::kIdle:
-        return "Idle";
-      case HvacAction::kOff:
-        return "Off";
-      default:
-        break;
-      }
-
-      switch (mode)
-      {
-      case HvacMode::kOff:
-        return "Off";
-      case HvacMode::kHeat:
-        return "Heating";
-      case HvacMode::kCool:
-        return "Cooling";
-      case HvacMode::kHeatCool:
-        return "Heat/Cool";
-      case HvacMode::kFanOnly:
-        return "Fan";
-      case HvacMode::kDry:
-        return "Dry";
-      case HvacMode::kAuto:
-        return "Auto";
-      default:
-        return "Unknown";
-      }
-    }
-
     void M5DialThermostat::setup_input_pins_()
     {
       gpio_set_direction(static_cast<gpio_num_t>(kEncoderPinA),
@@ -273,7 +234,7 @@ namespace esphome
       timer_conf.speed_mode = kBacklightMode;
       timer_conf.timer_num = kBacklightTimer;
       timer_conf.duty_resolution = kBacklightResolution;
-      timer_conf.freq_hz = 5000;
+      timer_conf.freq_hz = kBacklightPwmFrequencyHz;
       timer_conf.clk_cfg = LEDC_AUTO_CLK;
       if (ledc_timer_config(&timer_conf) != ESP_OK)
       {
@@ -326,7 +287,7 @@ namespace esphome
       timer_conf.speed_mode = kBuzzerMode;
       timer_conf.timer_num = kBuzzerTimer;
       timer_conf.duty_resolution = kBuzzerResolution;
-      timer_conf.freq_hz = 1800;
+      timer_conf.freq_hz = kBuzzerBaseFrequencyHz;
       timer_conf.clk_cfg = LEDC_AUTO_CLK;
       if (ledc_timer_config(&timer_conf) != ESP_OK)
       {
@@ -398,9 +359,6 @@ namespace esphome
       this->start_buzzer_tone_(tone_spec.frequency_hz);
       delay(tone_spec.duration_ms);
       this->stop_buzzer_tone_();
-      // this->set_timeout("buzzer_off", tone_spec.duration_ms,
-      //                   [this]()
-      //                   { this->stop_buzzer_tone_(); });
     }
 
     bool M5DialThermostat::parse_float_(StringRef value, float *out) const
@@ -681,23 +639,16 @@ namespace esphome
         return;
       }
 #endif
-      if (std::isnan(this->target_temp_))
-      {
-        return;
-      }
-      if (std::isnan(this->local_setpoint_))
-      {
-        this->local_setpoint_ = this->target_temp_;
-      }
-
-      if (this->temp_step_ <= 0.0f)
+      const SetpointAdjustResult result =
+          adjust_setpoint(this->local_setpoint_, this->target_temp_,
+                          this->min_temp_, this->max_temp_, this->temp_step_,
+                          direction);
+      if (!result.changed)
       {
         return;
       }
 
-      const float target = this->local_setpoint_ +
-                           (direction > 0 ? this->temp_step_ : -this->temp_step_);
-      this->local_setpoint_ = clamp_setpoint(target, this->min_temp_, this->max_temp_);
+      this->local_setpoint_ = result.new_setpoint_c;
       this->local_setpoint_dirty_ = true;
       this->last_interaction_ = millis();
       this->set_display_brightness_(true);
@@ -780,21 +731,17 @@ namespace esphome
         return;
       }
 
-      int idx = -1;
-      for (int i = 0; i < this->supported_modes_count_; ++i)
-      {
-        if (this->supported_modes_[i] == this->hvac_mode_)
-        {
-          idx = i;
-          break;
-        }
-      }
+      const int idx = this->find_mode_index_(this->hvac_mode_);
       if (idx < 0)
       {
         return;
       }
 
-      const int next_idx = (idx + 1) % this->supported_modes_count_;
+      const int next_idx = next_wrapped_index(idx, this->supported_modes_count_);
+      if (next_idx < 0)
+      {
+        return;
+      }
       const HvacMode mode = this->supported_modes_[next_idx];
       this->hvac_mode_ = mode;
       // Reset stale action so label shows mode name until HA responds.
@@ -817,6 +764,18 @@ namespace esphome
         this->last_button_ms_ = now;
       }
       this->prev_button_state_ = button_state;
+    }
+
+    int M5DialThermostat::find_mode_index_(HvacMode mode) const
+    {
+      for (int i = 0; i < this->supported_modes_count_; ++i)
+      {
+        if (this->supported_modes_[i] == mode)
+        {
+          return i;
+        }
+      }
+      return -1;
     }
 
     void M5DialThermostat::subscribe_ha_state_()
@@ -936,15 +895,8 @@ namespace esphome
 
     void M5DialThermostat::loop()
     {
-      const uint32_t loop_start_ms = millis();
-#ifndef DEBUG_TEST
-      if (this->comms_ok_ &&
-          loop_start_ms - this->last_ha_update_ > this->comms_timeout_ms_)
-      {
-        this->comms_ok_ = false;
-        this->needs_redraw_ = true;
-      }
-#endif
+      const uint32_t now_ms = millis();
+      this->update_comms_timeout_state_(now_ms);
 
 #ifndef DEBUG_TEST
       const bool allow_user_input = this->comms_ok_;
@@ -952,37 +904,66 @@ namespace esphome
       const bool allow_user_input = true;
 #endif
 
-      if (allow_user_input)
+      this->process_user_input_(allow_user_input);
+      this->apply_backlight_policy_(now_ms);
+      this->try_redraw_(now_ms);
+    }
+
+    bool M5DialThermostat::update_comms_timeout_state_(uint32_t now_ms)
+    {
+#ifdef DEBUG_TEST
+      (void)now_ms;
+      return false;
+#else
+      if (!should_mark_comms_offline(this->comms_ok_, now_ms, this->last_ha_update_,
+                                     this->comms_timeout_ms_))
       {
-        this->process_encoder_counts_();
-
-        const int button_state =
-            gpio_get_level(static_cast<gpio_num_t>(kButtonPin));
-        this->on_button_tick_(button_state);
+        return false;
       }
+      this->comms_ok_ = false;
+      this->needs_redraw_ = true;
+      return true;
+#endif
+    }
 
-      const uint32_t post_input_ms = millis();
+    void M5DialThermostat::process_user_input_(bool allow_user_input)
+    {
+      if (!allow_user_input)
+      {
+        return;
+      }
+      this->process_encoder_counts_();
+      const int button_state =
+          gpio_get_level(static_cast<gpio_num_t>(kButtonPin));
+      this->on_button_tick_(button_state);
+    }
+
+    void M5DialThermostat::apply_backlight_policy_(uint32_t now_ms)
+    {
       if (!this->comms_ok_)
       {
         this->set_display_brightness_(true);
       }
-      else if (should_idle_dim(post_input_ms, this->last_interaction_,
+      else if (should_idle_dim(now_ms, this->last_interaction_,
                                this->idle_timeout_ms_))
       {
         this->set_display_brightness_(false);
       }
+    }
 
-      const bool redraw_interval_elapsed =
-          this->last_redraw_ms_ == 0 ||
-          post_input_ms - this->last_redraw_ms_ >= kRedrawIntervalMs;
-      if (this->needs_redraw_ && this->display_ != nullptr &&
-          redraw_interval_elapsed)
+    bool M5DialThermostat::try_redraw_(uint32_t now_ms)
+    {
+      if (!should_trigger_redraw(this->needs_redraw_, this->display_ != nullptr,
+                                 this->last_redraw_ms_, now_ms,
+                                 kRedrawIntervalMs))
       {
-        ESP_LOGD(TAG, "Display update triggered");
-        this->display_->update();
-        this->last_redraw_ms_ = post_input_ms;
-        this->needs_redraw_ = false;
+        return false;
       }
+      ESP_LOGD(TAG, "Display update triggered");
+      this->display_->update();
+      this->last_redraw_ms_ = now_ms;
+      this->needs_redraw_ = false;
+      return true;
     }
 
     void M5DialThermostat::dump_config()

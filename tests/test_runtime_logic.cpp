@@ -1,6 +1,7 @@
 #include "components/m5dial_thermostat/runtime_logic.h"
 
 #include <cassert>
+#include <cmath>
 
 using namespace esphome::m5dial_thermostat;
 
@@ -45,6 +46,51 @@ static void test_should_idle_dim() {
   assert(should_idle_dim(31001U, 1000U, 30000U));
 }
 
+static void test_should_mark_comms_offline() {
+  assert(!should_mark_comms_offline(false, 5000U, 1000U, 30000U));
+  assert(!should_mark_comms_offline(true, 5000U, 6000U, 30000U));
+  assert(!should_mark_comms_offline(true, 31000U, 1000U, 30000U));
+  assert(should_mark_comms_offline(true, 31001U, 1000U, 30000U));
+}
+
+static void test_should_trigger_redraw() {
+  assert(!should_trigger_redraw(false, true, 1000U, 2000U, 33U));
+  assert(!should_trigger_redraw(true, false, 1000U, 2000U, 33U));
+  assert(should_trigger_redraw(true, true, 0U, 2000U, 33U));
+  assert(!should_trigger_redraw(true, true, 1980U, 2000U, 33U));
+  assert(should_trigger_redraw(true, true, 1967U, 2000U, 33U));
+}
+
+static void test_next_wrapped_index() {
+  assert(next_wrapped_index(0, 4) == 1);
+  assert(next_wrapped_index(3, 4) == 0);
+  assert(next_wrapped_index(-1, 4) == -1);
+  assert(next_wrapped_index(4, 4) == -1);
+  assert(next_wrapped_index(0, 0) == -1);
+}
+
+static void test_adjust_setpoint() {
+  SetpointAdjustResult result =
+      adjust_setpoint(22.0f, 22.0f, 15.0f, 30.0f, 0.5f, +1);
+  assert(result.changed);
+  assert(result.new_setpoint_c == 22.5f);
+
+  result = adjust_setpoint(15.0f, 15.0f, 15.0f, 30.0f, 0.5f, -1);
+  assert(!result.changed);
+  assert(result.new_setpoint_c == 15.0f);
+
+  result = adjust_setpoint(NAN, 21.0f, 15.0f, 30.0f, 0.5f, +1);
+  assert(result.changed);
+  assert(result.new_setpoint_c == 21.5f);
+
+  result = adjust_setpoint(22.0f, NAN, 15.0f, 30.0f, 0.5f, +1);
+  assert(!result.changed);
+  assert(result.new_setpoint_c == 22.0f);
+
+  result = adjust_setpoint(22.0f, 22.0f, 15.0f, 30.0f, 0.0f, +1);
+  assert(!result.changed);
+}
+
 static void test_backlight_mapping() {
   assert(map_backlight_level(0U, false) == 0U);
   assert(map_backlight_level(128U, false) == 128U);
@@ -62,6 +108,10 @@ int main() {
   test_consume_encoder_counts();
   test_tone_spec_and_retrigger();
   test_should_idle_dim();
+  test_should_mark_comms_offline();
+  test_should_trigger_redraw();
+  test_next_wrapped_index();
+  test_adjust_setpoint();
   test_backlight_mapping();
   return 0;
 }

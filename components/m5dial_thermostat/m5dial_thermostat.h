@@ -34,11 +34,6 @@ namespace esphome
     public:
       static constexpr int kMaxSupportedModes = 8;
 
-      static constexpr float kArcCenterX = 120.0f;
-      static constexpr float kArcCenterY = 120.0f;
-      static constexpr int kArcOuterRadius = 108;
-      static constexpr int kArcInnerRadius = 90;
-
       void set_entity_id(const std::string &entity_id) { this->entity_id_ = entity_id; }
       void set_display(display::Display *display) { this->display_ = display; }
       void set_font_mode(display::BaseFont *font) { this->font_mode_ = font; }
@@ -78,7 +73,6 @@ namespace esphome
 
       static HvacMode parse_hvac_mode(const char *state);
       static HvacAction parse_hvac_action(const char *state);
-      static const char *action_to_label(HvacAction action, HvacMode mode);
 
     protected:
       void on_hvac_mode(StringRef state);
@@ -96,6 +90,7 @@ namespace esphome
       void on_encoder_tick_(int direction);
       void on_button_tick_(int button_state);
       void on_mode_button_();
+      int find_mode_index_(HvacMode mode) const;
 
       void subscribe_ha_state_();
       void set_writer_();
@@ -112,6 +107,10 @@ namespace esphome
       bool parse_float_(StringRef value, float *out) const;
       void parse_supported_modes_(const char *value);
       void play_sound_(const char *tone);
+      bool update_comms_timeout_state_(uint32_t now_ms);
+      void process_user_input_(bool allow_user_input);
+      void apply_backlight_policy_(uint32_t now_ms);
+      bool try_redraw_(uint32_t now_ms);
 
       static constexpr uint8_t kEncoderPinA = 40;
       static constexpr uint8_t kEncoderPinB = 41;
