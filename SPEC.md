@@ -93,9 +93,10 @@ m5dial_thermostat:
 
 No `substitutions`, `globals`, `sensor`, `script`, or
 `binary_sensor` blocks are needed. The component's `__init__.py`
-auto-creates LEDC outputs (backlight, buzzer), RTTTL, fonts, and
-the units select entity. Encoder and button GPIOs are hardcoded
-in C++ (fixed M5 Dial pins).
+auto-creates the units select entity and resolves optional
+user-provided font IDs. Backlight and buzzer are driven directly
+in C++ via LEDC. Encoder and button GPIOs are hardcoded in C++
+(fixed M5 Dial pins).
 
 ---
 
@@ -142,13 +143,11 @@ CONFIG_SCHEMA = cv.Schema({
 3. Look up display: `await cg.get_variable(display_id)`
 4. Backlight is controlled directly in C++ via LEDC on GPIO9
    (no `ledc.output` entity registration)
-5. Auto-create LEDC output + RTTTL for buzzer (GPIO3)
-6. Auto-create 4 fonts via `gfonts://Roboto` (16, 20, 48, 72px)
-   - Use `bpp: 4` for anti-aliased rendering
-   - Single shared glyph set (digits, degree sign, mode labels,
-     `?`, space) -- ESP32-S3 has ample flash/PSRAM
+5. Use direct C++ LEDC buzzer control on GPIO3 (no RTTTL component)
+6. Resolve optional user-provided font IDs for
+   mode/setpoint/temp/error rendering
 7. Auto-create `UnitSelect` (options: `"celsius"`, `"fahrenheit"`)
-8. Wire all sub-components to main class via `set_*()` calls
+8. Wire all resolved sub-components to main class via `set_*()` calls
 
 ---
 
@@ -200,10 +199,6 @@ enum class HvacAction : uint8_t {
 // Parse at callback time from StringRef
 static HvacMode parse_hvac_mode(const char *s);
 static HvacAction parse_hvac_action(const char *s);
-
-// For display text, return const char* literals
-static const char *action_to_label(
-    HvacAction action, HvacMode mode);
 ```
 
 For `supported_modes_` (parsed once from `hvac_modes` attribute,
@@ -254,10 +249,10 @@ component class (use `this->` prefix for all access):
 | Member | Type | Source |
 |---|---|---|
 | `display_` | `display::Display*` | User YAML `display_id` |
-| `font_mode_` | `font::Font*` | Auto-created 16px |
-| `font_setpoint_` | `font::Font*` | Auto-created 20px |
-| `font_temp_` | `font::Font*` | Auto-created 48px |
-| `font_error_` | `font::Font*` | Auto-created 72px |
+| `font_mode_` | `font::Font*` | Optional user-configured font |
+| `font_setpoint_` | `font::Font*` | Optional user-configured font |
+| `font_temp_` | `font::Font*` | Optional user-configured font |
+| `font_error_` | `font::Font*` | Optional user-configured font |
 | `unit_select_` | `UnitSelect*` | Auto-created |
 
 ---
@@ -381,10 +376,9 @@ Logical brightness values are treated as active-high (`255` = full on,
 
 ## Buzzer / Sounds
 
-The `__init__.py` auto-creates a LEDC output on GPIO3 (buzzer).
-Tones are generated directly via `ledc_set_freq` / `ledc_set_duty`
-(no RTTTL component needed). If `this->enable_sounds_` is false,
-skip all tone calls.
+The component configures LEDC directly on GPIO3 (buzzer). Tones are
+generated via `ledc_set_freq` / `ledc_set_duty`. If
+`this->enable_sounds_` is false, skip all tone calls.
 
 Three tones (based on M5Dial reference firmware):
 - **Rotary up (CW):** 6000 Hz, 4 ms
@@ -719,8 +713,8 @@ the display writer callback and passes it to these functions.
 
 ## Fonts
 
-Four sizes, Roboto via `gfonts://Roboto`. Auto-created by
-`__init__.py`. Use `bpp: 4` for anti-aliased rendering on the
+Four sizes, Roboto via `gfonts://Roboto`, are configured in user YAML
+and passed by ID into the component. Use `bpp: 4` for anti-aliased rendering on the
 color display.
 
 | Size | ID | Use |

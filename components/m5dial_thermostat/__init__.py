@@ -6,7 +6,6 @@ from esphome.const import (
     CONF_DISPLAY_ID,
     CONF_ENTITY_ID,
     CONF_ID,
-    CONF_FREQUENCY,
     CONF_DISABLED_BY_DEFAULT,
     CONF_NAME,
 )
@@ -38,7 +37,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(): cv.declare_id(M5DialThermostat),
         cv.Required(CONF_ENTITY_ID): cv.string,
         cv.Required(CONF_DISPLAY_ID): cv.use_id(display.Display),
-        cv.Optional(CONF_ACTIVE_BRIGHTNESS, default=180): cv.int_range(min=0, max=255),
+        cv.Optional(CONF_ACTIVE_BRIGHTNESS, default=255): cv.int_range(min=0, max=255),
         cv.Optional(CONF_IDLE_BRIGHTNESS, default=50): cv.int_range(min=0, max=255),
         cv.Optional(CONF_IDLE_TIMEOUT, default="30s"): cv.positive_time_period_milliseconds,
         cv.Optional(CONF_ENABLE_SOUNDS, default=True): cv.boolean,
@@ -49,11 +48,6 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_FONT_ERROR_ID): cv.use_id(EspFont),
     }
 ).extend(cv.COMPONENT_SCHEMA)
-
-
-async def _create_buzzer(owner_id):
-    del owner_id
-    return None
 
 
 async def _create_unit_select(owner_id, thermostat):
@@ -75,8 +69,6 @@ async def to_code(config):
 
     display_obj = await cg.get_variable(config[CONF_DISPLAY_ID])
     cg.add(var.set_display(display_obj))
-
-    await _create_buzzer(str(config[CONF_ID]))
 
     if CONF_FONT_MODE_ID in config:
         cg.add(var.set_font_mode(await cg.get_variable(config[CONF_FONT_MODE_ID])))

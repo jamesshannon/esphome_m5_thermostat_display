@@ -18,11 +18,9 @@ Home Assistant service calls when users adjust temperature or cycle modes.
   responding.
 - Supports Celsius/Fahrenheit unit switching through a generated
   `select` entity.
-- Creates all required companion objects automatically in codegen:
-  - Backlight LEDC output
-  - Buzzer LEDC output + RTTTL player
-  - Four Roboto gfonts (`16/20/48/72`, `bpp: 4`)
-  - Unit select entity (`celsius`, `fahrenheit`)
+- Uses direct LEDC control in C++ for backlight (`GPIO9`) and buzzer (`GPIO3`).
+- Auto-creates the unit select entity (`celsius`, `fahrenheit`).
+- Accepts user-provided font IDs for mode/setpoint/temp/error text.
 
 ## Project structure
 
@@ -100,6 +98,11 @@ external_components:
 m5dial_thermostat:
   entity_id: climate.my_thermostat
   display_id: m5dial_display
+  # Optional font IDs (recommended for full UI text rendering):
+  # font_mode_id: font_mode
+  # font_setpoint_id: font_setpoint
+  # font_temp_id: font_temp
+  # font_error_id: font_error
   # Optional settings
   # active_brightness: 255
   # idle_brightness: 50
