@@ -54,16 +54,39 @@ class Display {
  public:
   virtual ~Display() = default;
 
-  void fill(const Color &color) { this->fill_color_ = color; }
+  void fill(const Color &color) {
+    this->fill_color_ = color;
+    this->fill_calls_++;
+  }
   void print(int, int, const void *, const Color &, int,
-             const char *, const Color &) {}
+             const char *, const Color &) {
+    this->print_calls_++;
+  }
   void print(int, int, const void *, const Color &, TextAlign,
-             const char *, const Color &) {}
-  void filled_circle(int, int, int, const Color &) {}
-  void draw_pixel_at(int, int, const Color &) {}
+             const char *, const Color &) {
+    this->print_calls_++;
+  }
+  void filled_circle(int, int, int, const Color &) { this->filled_circle_calls_++; }
+  void draw_pixel_at(int, int, const Color &) { this->draw_pixel_calls_++; }
+
+  void reset_stats() {
+    this->fill_calls_ = 0;
+    this->print_calls_ = 0;
+    this->filled_circle_calls_ = 0;
+    this->draw_pixel_calls_ = 0;
+  }
+
+  int fill_calls() const { return this->fill_calls_; }
+  int print_calls() const { return this->print_calls_; }
+  int filled_circle_calls() const { return this->filled_circle_calls_; }
+  int draw_pixel_calls() const { return this->draw_pixel_calls_; }
 
  private:
   Color fill_color_{};
+  int fill_calls_{0};
+  int print_calls_{0};
+  int filled_circle_calls_{0};
+  int draw_pixel_calls_{0};
 };
 
 using DisplayWriter = void (*)(Display &);

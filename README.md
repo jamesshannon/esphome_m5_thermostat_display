@@ -215,6 +215,12 @@ The component currently expects fixed GPIO wiring matching M5 Dial for:
 
 - Run tests:
   - `make test`
+- Run render regression budget check (catches large draw-cost regressions):
+  - `make perf-budget`
+- Run memory/image budget check (compile + thresholds):
+  - `make memory-budget`
+- Run both budget checks:
+  - `make budget`
 - Run lint:
   - `./.venv/bin/yamllint thermostat.yaml`
 
