@@ -9,6 +9,7 @@ namespace
   constexpr float kTwoPi = 6.28318530717958647692f;
   constexpr float kDegToRad = kTwoPi / 360.0f;
   constexpr float kArcRasterStepDeg = 0.5f;
+  constexpr float kArcDrawStepDeg = 1.0f;
   constexpr float kArcAngleEpsilon = 1e-4f;
   constexpr int kTrigLutSize = 720;
 
@@ -189,7 +190,7 @@ namespace esphome
 
     // Draw a ring segment for [angle_start, angle_end] in extended [120, 420] space,
     // with rounded end caps based on the ring width. Rasterization uses a
-    // precomputed sin/cos LUT to avoid per-pixel atan2f() work.
+    // precomputed sin/cos LUT and radial pixel fill.
     void draw_arc_segment(
         display::Display &d,
         int cx,
@@ -208,6 +209,8 @@ namespace esphome
 
       const float center_radius = static_cast<float>(r_inner + r_outer) * 0.5f;
       const float cap_radius = static_cast<float>(r_outer - r_inner) * 0.5f;
+      const int cap_radius_px =
+          std::max(1, static_cast<int>(std::lround(cap_radius)));
 
       int x_start = 0;
       int y_start = 0;
@@ -216,22 +219,23 @@ namespace esphome
 
       angle_to_xy(cx, cy, center_radius, angle_start, &x_start, &y_start);
       angle_to_xy(cx, cy, center_radius, angle_end, &x_end, &y_end);
-      d.filled_circle(x_start, y_start, static_cast<int>(std::lround(cap_radius)),
-                      color);
-      d.filled_circle(x_end, y_end, static_cast<int>(std::lround(cap_radius)),
-                      color);
+      d.filled_circle(x_start, y_start, cap_radius_px, color);
+      d.filled_circle(x_end, y_end, cap_radius_px, color);
 
       for (float angle = angle_start; angle <= angle_end + kArcAngleEpsilon;
-           angle += kArcRasterStepDeg)
+           angle += kArcDrawStepDeg)
       {
         float sine = 0.0f;
         float cosine = 0.0f;
         sample_trig(angle, &sine, &cosine);
-        const int x = static_cast<int>(std::lround(static_cast<float>(cx) +
-                                                   center_radius * cosine));
-        const int y = static_cast<int>(std::lround(static_cast<float>(cy) +
-                                                   center_radius * sine));
-        d.filled_circle(x, y, static_cast<int>(std::lround(cap_radius)), color);
+        for (int radius = r_inner; radius <= r_outer; ++radius)
+        {
+          const int x = static_cast<int>(std::lround(
+              static_cast<float>(cx) + static_cast<float>(radius) * cosine));
+          const int y = static_cast<int>(std::lround(
+              static_cast<float>(cy) + static_cast<float>(radius) * sine));
+          d.draw_pixel_at(x, y, color);
+        }
       }
     }
 
