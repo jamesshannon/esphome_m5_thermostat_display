@@ -8,59 +8,13 @@ namespace
 {
   constexpr float kTwoPi = 6.28318530717958647692f;
   constexpr float kDegToRad = kTwoPi / 360.0f;
-  constexpr float kArcRasterStepDeg = 0.5f;
-  constexpr float kArcDrawStepDeg = 1.0f;
   constexpr float kArcAngleEpsilon = 1e-4f;
-  constexpr int kTrigLutSize = 720;
-
-  struct TrigLut
-  {
-    bool initialized{false};
-    std::array<float, kTrigLutSize> sin_values{};
-    std::array<float, kTrigLutSize> cos_values{};
-  };
-
-  TrigLut g_trig_lut;
-
-  void ensure_trig_lut()
-  {
-    if (g_trig_lut.initialized)
-    {
-      return;
-    }
-    for (int i = 0; i < kTrigLutSize; ++i)
-    {
-      const float angle_deg = static_cast<float>(i) * kArcRasterStepDeg;
-      const float angle_rad = angle_deg * kDegToRad;
-      g_trig_lut.sin_values[i] = std::sin(angle_rad);
-      g_trig_lut.cos_values[i] = std::cos(angle_rad);
-    }
-    g_trig_lut.initialized = true;
-  }
-
-  void sample_trig(float angle_deg, float *sine, float *cosine)
-  {
-    float normalized = std::fmod(angle_deg, 360.0f);
-    if (normalized < 0.0f)
-    {
-      normalized += 360.0f;
-    }
-
-    int index = static_cast<int>(std::lround(normalized / kArcRasterStepDeg));
-    if (index >= kTrigLutSize)
-    {
-      index = 0;
-    }
-
-    if (sine != nullptr)
-    {
-      *sine = g_trig_lut.sin_values[index];
-    }
-    if (cosine != nullptr)
-    {
-      *cosine = g_trig_lut.cos_values[index];
-    }
-  }
+  // Keep angular step dense enough to avoid visible striping while reducing
+  // heavy per-pixel atan2 work in the draw path.
+  constexpr float kArcMinStepDeg = 0.25f;
+  constexpr float kArcMaxStepDeg = 0.75f;
+  constexpr float kShortArcSpanDeg = 36.0f;
+  constexpr float kShortArcMaxStepDeg = 0.55f;
 } // namespace
 
 namespace esphome
@@ -188,9 +142,8 @@ namespace esphome
       return count;
     }
 
-    // Draw a ring segment for [angle_start, angle_end] in extended [120, 420] space,
-    // with rounded end caps based on the ring width. Rasterization uses a
-    // precomputed sin/cos LUT and radial pixel fill.
+    // Draw a ring segment for [angle_start, angle_end] in extended [120, 420]
+    // space, with rounded end caps based on the ring width.
     void draw_arc_segment(
         display::Display &d,
         int cx,
@@ -205,10 +158,27 @@ namespace esphome
       {
         return;
       }
-      ensure_trig_lut();
 
       const float center_radius = static_cast<float>(r_inner + r_outer) * 0.5f;
       const float cap_radius = static_cast<float>(r_outer - r_inner) * 0.5f;
+      const float arc_span_deg = angle_end - angle_start;
+      if (arc_span_deg <= 0.0f)
+      {
+        return;
+      }
+
+      // Outer circumference degrees-per-pixel approximation.
+      const float deg_per_outer_pixel =
+          57.2957795f / static_cast<float>(std::max(1, r_outer));
+      float angle_step_deg = std::max(
+          kArcMinStepDeg,
+          std::min(kArcMaxStepDeg, deg_per_outer_pixel * 0.5f));
+      if (arc_span_deg <= kShortArcSpanDeg)
+      {
+        // For short segments, cap step size a bit lower to keep the stroke
+        // visually smooth without reintroducing heavy whole-ring scans.
+        angle_step_deg = std::min(angle_step_deg, kShortArcMaxStepDeg);
+      }
       const int cap_radius_px =
           std::max(1, static_cast<int>(std::lround(cap_radius)));
 
@@ -223,17 +193,17 @@ namespace esphome
       d.filled_circle(x_end, y_end, cap_radius_px, color);
 
       for (float angle = angle_start; angle <= angle_end + kArcAngleEpsilon;
-           angle += kArcDrawStepDeg)
+           angle += angle_step_deg)
       {
-        float sine = 0.0f;
-        float cosine = 0.0f;
-        sample_trig(angle, &sine, &cosine);
+        const float angle_rad = angle * kDegToRad;
+        const float cos_val = std::cos(angle_rad);
+        const float sin_val = std::sin(angle_rad);
         for (int radius = r_inner; radius <= r_outer; ++radius)
         {
-          const int x = static_cast<int>(std::lround(
-              static_cast<float>(cx) + static_cast<float>(radius) * cosine));
-          const int y = static_cast<int>(std::lround(
-              static_cast<float>(cy) + static_cast<float>(radius) * sine));
+          const int x = static_cast<int>(std::lround(static_cast<float>(cx) +
+                                                     radius * cos_val));
+          const int y = static_cast<int>(std::lround(static_cast<float>(cy) +
+                                                     radius * sin_val));
           d.draw_pixel_at(x, y, color);
         }
       }

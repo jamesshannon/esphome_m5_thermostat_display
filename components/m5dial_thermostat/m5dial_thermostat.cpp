@@ -156,6 +156,16 @@ namespace esphome
       return HvacAction::kUnknown;
     }
 
+    void M5DialThermostat::set_fahrenheit(bool fahrenheit)
+    {
+      if (this->display_fahrenheit_ == fahrenheit)
+      {
+        return;
+      }
+      this->display_fahrenheit_ = fahrenheit;
+      this->needs_redraw_ = true;
+    }
+
     void M5DialThermostat::setup_input_pins_()
     {
       gpio_set_direction(static_cast<gpio_num_t>(kEncoderPinA),
@@ -469,6 +479,7 @@ namespace esphome
       this->last_ha_update_ = millis();
       this->comms_ok_ = true;
 
+      const float previous_temp = this->current_temp_;
       float value = NAN;
       if (!this->parse_float_(state, &value))
       {
@@ -478,7 +489,11 @@ namespace esphome
       {
         this->current_temp_ = value;
       }
-      this->needs_redraw_ = true;
+      if (has_display_temp_changed(previous_temp, this->current_temp_,
+                                   this->display_fahrenheit_))
+      {
+        this->needs_redraw_ = true;
+      }
     }
 
     void M5DialThermostat::on_target_temp(StringRef state)
@@ -486,6 +501,7 @@ namespace esphome
       this->last_ha_update_ = millis();
       this->comms_ok_ = true;
 
+      const float previous_local_setpoint = this->local_setpoint_;
       float value = NAN;
       if (!this->parse_float_(state, &value))
       {
@@ -494,7 +510,12 @@ namespace esphome
         {
           this->local_setpoint_ = NAN;
         }
-        this->needs_redraw_ = true;
+        if (has_display_temp_changed(previous_local_setpoint,
+                                     this->local_setpoint_,
+                                     this->display_fahrenheit_))
+        {
+          this->needs_redraw_ = true;
+        }
         return;
       }
 
@@ -503,7 +524,12 @@ namespace esphome
       {
         this->local_setpoint_ = this->target_temp_;
       }
-      this->needs_redraw_ = true;
+      if (has_display_temp_changed(previous_local_setpoint,
+                                   this->local_setpoint_,
+                                   this->display_fahrenheit_))
+      {
+        this->needs_redraw_ = true;
+      }
     }
 
     void M5DialThermostat::on_supported_modes(StringRef state)

@@ -73,6 +73,11 @@ namespace esphome
                                          float max_temp_c,
                                          float temp_step_c, int direction);
 
+    // Returns true when the displayed 0.1-degree value changed (or NaN state
+    // changed), for the selected display units.
+    bool has_display_temp_changed(float previous_temp_c, float next_temp_c,
+                                  bool display_fahrenheit);
+
     // Converts logical brightness [0..255] to hardware level considering polarity.
     uint8_t map_backlight_level(uint8_t level, bool active_low);
 

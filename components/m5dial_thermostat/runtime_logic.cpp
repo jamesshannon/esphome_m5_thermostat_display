@@ -15,6 +15,20 @@ namespace esphome
       constexpr uint32_t kRotateDownToneDurationMs = 5;
       constexpr uint32_t kClickFrequencyHz = 2000;
       constexpr uint32_t kClickToneDurationMs = 20;
+
+      float to_display_temp(float temp_c, bool display_fahrenheit)
+      {
+        if (!display_fahrenheit)
+        {
+          return temp_c;
+        }
+        return (temp_c * 9.0f / 5.0f) + 32.0f;
+      }
+
+      int32_t quantize_tenths(float value)
+      {
+        return static_cast<int32_t>(std::lround(value * 10.0f));
+      }
     } // namespace
 
     ToneSpec get_tone_spec(SoundEvent event)
@@ -158,6 +172,22 @@ namespace esphome
           .changed = changed,
           .new_setpoint_c = changed ? next_setpoint_c : local_setpoint_c,
       };
+    }
+
+    bool has_display_temp_changed(float previous_temp_c, float next_temp_c,
+                                  bool display_fahrenheit)
+    {
+      const bool previous_nan = std::isnan(previous_temp_c);
+      const bool next_nan = std::isnan(next_temp_c);
+      if (previous_nan || next_nan)
+      {
+        return previous_nan != next_nan;
+      }
+
+      const float previous_display =
+          to_display_temp(previous_temp_c, display_fahrenheit);
+      const float next_display = to_display_temp(next_temp_c, display_fahrenheit);
+      return quantize_tenths(previous_display) != quantize_tenths(next_display);
     }
 
     uint8_t map_backlight_level(uint8_t level, bool active_low)

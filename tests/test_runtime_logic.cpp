@@ -112,6 +112,18 @@ static void test_backlight_mapping() {
   assert(level_to_ledc_duty_10bit(255U) == 1023U);
 }
 
+static void test_has_display_temp_changed() {
+  assert(!has_display_temp_changed(21.04f, 21.03f, false));
+  assert(has_display_temp_changed(21.04f, 21.15f, false));
+
+  assert(!has_display_temp_changed(21.00f, 21.02f, true));
+  assert(has_display_temp_changed(21.00f, 21.06f, true));
+
+  assert(has_display_temp_changed(NAN, 21.0f, false));
+  assert(has_display_temp_changed(21.0f, NAN, false));
+  assert(!has_display_temp_changed(NAN, NAN, false));
+}
+
 int main() {
   test_consume_encoder_counts();
   test_tone_spec_and_retrigger();
@@ -122,5 +134,6 @@ int main() {
   test_next_wrapped_index();
   test_adjust_setpoint();
   test_backlight_mapping();
+  test_has_display_temp_changed();
   return 0;
 }

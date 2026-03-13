@@ -56,7 +56,7 @@ namespace esphome
       void set_comms_timeout(uint32_t timeout_ms) { this->comms_timeout_ms_ = timeout_ms; }
       void set_enable_sounds(bool enable_sounds) { this->enable_sounds_ = enable_sounds; }
 
-      void set_fahrenheit(bool fahrenheit) { this->display_fahrenheit_ = fahrenheit; }
+      void set_fahrenheit(bool fahrenheit);
 
       void setup() override;
       void loop() override;
