@@ -314,9 +314,11 @@ restore (any subscription callback fires), set
 
 **When `comms_ok_ == false`:**
 - Display the reconnect spinner screen (see UI)
-- All encoder and button input is ignored
-- Keep backlight at `active_brightness_` so the error screen remains
-  visible while disconnected
+- Rotary and short mode-button presses do not perform thermostat actions
+- Backlight still follows idle timeout while disconnected (same dim policy as
+  connected mode)
+- A button press edge or rotary movement acts as a wake gesture and restores
+  `active_brightness_`
 
 **NaN setpoint vs. lost comms:** When `hvac_mode_` is `kOff` or `kIdle`, HA
 may not provide `temperature`. This is normal, not a comms error.
@@ -364,6 +366,7 @@ Conversion: `F = C * 9.0 / 5.0 + 32`
 - On any user input: set to `active_brightness_`, record
   `this->last_interaction_ = millis()`
 - In `loop()`: if idle time exceeded, set to `idle_brightness_`
+- This policy applies in both normal and reconnect screens
 
 Backlight PWM is configured directly in C++ on GPIO9 using LEDC low-speed
 timer/channel assignment. This avoids exhausting `ledc.output` component

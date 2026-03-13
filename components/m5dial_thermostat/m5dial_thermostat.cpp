@@ -796,6 +796,8 @@ namespace esphome
       {
         this->button_press_start_ms_ = now;
         this->button_long_press_handled_ = false;
+        this->last_interaction_ = now;
+        this->set_display_brightness_(true);
       }
 
 #ifdef DEBUG_TEST
@@ -997,6 +999,17 @@ namespace esphome
       this->on_button_tick_(button_state, allow_user_input);
       if (!allow_user_input)
       {
+        // Even when interaction is locked (e.g. comms lost), treat rotary
+        // movement as a wake gesture for backlight policy.
+        const int32_t delta_counts =
+            __atomic_exchange_n(&this->encoder_delta_counts_, 0,
+                                __ATOMIC_ACQ_REL);
+        if (delta_counts != 0)
+        {
+          this->encoder_accumulator_ = 0;
+          this->last_interaction_ = millis();
+          this->set_display_brightness_(true);
+        }
         return;
       }
       this->process_encoder_counts_();
@@ -1004,15 +1017,13 @@ namespace esphome
 
     void M5DialThermostat::apply_backlight_policy_(uint32_t now_ms)
     {
-      if (!this->comms_ok_)
-      {
-        this->set_display_brightness_(true);
-      }
-      else if (should_idle_dim(now_ms, this->last_interaction_,
-                               this->idle_timeout_ms_))
+      if (should_idle_dim(now_ms, this->last_interaction_,
+                          this->idle_timeout_ms_))
       {
         this->set_display_brightness_(false);
+        return;
       }
+      this->set_display_brightness_(true);
     }
 
     void M5DialThermostat::update_no_connection_animation_(uint32_t now_ms)
