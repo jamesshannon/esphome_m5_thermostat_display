@@ -174,6 +174,16 @@ namespace esphome
       };
     }
 
+    bool should_send_setpoint(bool local_setpoint_dirty, float local_setpoint_c,
+                              bool comms_ok)
+    {
+      if (!local_setpoint_dirty || std::isnan(local_setpoint_c))
+      {
+        return false;
+      }
+      return comms_ok;
+    }
+
     bool has_display_temp_changed(float previous_temp_c, float next_temp_c,
                                   bool display_fahrenheit)
     {

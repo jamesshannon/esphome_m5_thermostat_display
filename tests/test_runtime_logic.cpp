@@ -124,6 +124,13 @@ static void test_has_display_temp_changed() {
   assert(!has_display_temp_changed(NAN, NAN, false));
 }
 
+static void test_should_send_setpoint() {
+  assert(!should_send_setpoint(false, 22.0f, true));
+  assert(!should_send_setpoint(true, NAN, true));
+  assert(!should_send_setpoint(true, 22.0f, false));
+  assert(should_send_setpoint(true, 22.0f, true));
+}
+
 int main() {
   test_consume_encoder_counts();
   test_tone_spec_and_retrigger();
@@ -135,5 +142,6 @@ int main() {
   test_adjust_setpoint();
   test_backlight_mapping();
   test_has_display_temp_changed();
+  test_should_send_setpoint();
   return 0;
 }

@@ -589,28 +589,19 @@ namespace esphome
 
     void M5DialThermostat::send_setpoint_to_ha_()
     {
-#ifndef DEBUG_TEST
-      if (!this->local_setpoint_dirty_)
-      {
-        return;
-      }
-      if (std::isnan(this->local_setpoint_))
-      {
-        return;
-      }
-      if (!this->comms_ok_)
+      if (!should_send_setpoint(this->local_setpoint_dirty_,
+                                this->local_setpoint_, this->comms_ok_))
       {
         return;
       }
 
+#ifndef DEBUG_TEST
       std::map<std::string, std::string> data;
       data["entity_id"] = this->entity_id_;
       data["temperature"] = std::to_string(this->local_setpoint_);
       this->call_homeassistant_service("climate.set_temperature", data);
-      this->local_setpoint_dirty_ = false;
-#else
-      this->local_setpoint_dirty_ = false;
 #endif
+      this->local_setpoint_dirty_ = false;
     }
 
     void M5DialThermostat::send_mode_to_ha_(HvacMode mode)
