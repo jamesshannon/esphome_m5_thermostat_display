@@ -45,9 +45,23 @@ static void test_should_idle_dim() {
   assert(should_idle_dim(31001U, 1000U, 30000U));
 }
 
+static void test_backlight_mapping() {
+  assert(map_backlight_level(0U, false) == 0U);
+  assert(map_backlight_level(128U, false) == 128U);
+  assert(map_backlight_level(255U, false) == 255U);
+
+  assert(map_backlight_level(0U, true) == 255U);
+  assert(map_backlight_level(128U, true) == 127U);
+  assert(map_backlight_level(255U, true) == 0U);
+
+  assert(level_to_ledc_duty_10bit(0U) == 0U);
+  assert(level_to_ledc_duty_10bit(255U) == 1023U);
+}
+
 int main() {
   test_consume_encoder_counts();
   test_tone_spec_and_retrigger();
   test_should_idle_dim();
+  test_backlight_mapping();
   return 0;
 }

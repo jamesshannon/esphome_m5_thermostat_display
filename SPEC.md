@@ -140,7 +140,8 @@ CONFIG_SCHEMA = cv.Schema({
 1. Create `M5DialThermostat` via `cg.new_Pvariable()`
 2. `await cg.register_component(var, config)`
 3. Look up display: `await cg.get_variable(display_id)`
-4. Auto-create LEDC output for backlight (GPIO9)
+4. Backlight is controlled directly in C++ via LEDC on GPIO9
+   (no `ledc.output` entity registration)
 5. Auto-create LEDC output + RTTTL for buzzer (GPIO3)
 6. Auto-create 4 fonts via `gfonts://Roboto` (16, 20, 48, 72px)
    - Use `bpp: 4` for anti-aliased rendering
@@ -253,12 +254,11 @@ component class (use `this->` prefix for all access):
 | Member | Type | Source |
 |---|---|---|
 | `display_` | `display::Display*` | User YAML `display_id` |
-| `backlight_` | `output::FloatOutput*` | Auto-created LEDC |
-| `rtttl_` | `rtttl::Rtttl*` | Auto-created |
 | `font_mode_` | `font::Font*` | Auto-created 16px |
 | `font_setpoint_` | `font::Font*` | Auto-created 20px |
 | `font_temp_` | `font::Font*` | Auto-created 48px |
 | `font_error_` | `font::Font*` | Auto-created 72px |
+| `unit_select_` | `UnitSelect*` | Auto-created |
 
 ---
 
@@ -370,9 +370,12 @@ Conversion: `F = C * 9.0 / 5.0 + 32`
   `this->last_interaction_ = millis()`
 - In `loop()`: if idle time exceeded, set to `idle_brightness_`
 
-The `__init__.py` auto-creates a LEDC output on GPIO9. The
-component stores the pointer as `this->backlight_` and calls
-`this->backlight_->set_level(brightness / 255.0f)`.
+Backlight PWM is configured directly in C++ on GPIO9 using LEDC low-speed
+timer/channel assignment. This avoids exhausting `ledc.output` component
+registration capacity and prevents dual ownership of the same pin.
+
+Logical brightness values are treated as active-high (`255` = full on,
+`0` = off), then mapped to LEDC duty.
 
 ---
 

@@ -1,6 +1,5 @@
 from esphome import codegen as cg
 from esphome.components import display, select
-from esphome.components.ledc import output as ledc_output
 from esphome.components.font import Font as EspFont
 import esphome.config_validation as cv
 from esphome.const import (
@@ -10,14 +9,8 @@ from esphome.const import (
     CONF_FREQUENCY,
     CONF_DISABLED_BY_DEFAULT,
     CONF_NAME,
-    CONF_OUTPUT,
-    CONF_MODE,
-    CONF_INVERTED,
-    CONF_NUMBER,
-    CONF_PIN,
 )
 from esphome.core import ID
-from esphome.components.esp32 import gpio as esp32_gpio
 
 m5dial_ns = cg.esphome_ns.namespace("m5dial_thermostat")
 api_ns = cg.esphome_ns.namespace("api")
@@ -28,7 +21,7 @@ M5DialThermostat = m5dial_ns.class_(
 UnitSelect = m5dial_ns.class_("UnitSelect", select.Select, cg.Component)
 
 DEPENDENCIES = ["api"]
-AUTO_LOAD = ["select", "output", "ledc", "font"]
+AUTO_LOAD = ["select", "font"]
 CODEOWNERS = ["@jamesshannon"]
 
 CONF_ACTIVE_BRIGHTNESS = "active_brightness"
@@ -40,8 +33,6 @@ CONF_FONT_MODE_ID = "font_mode_id"
 CONF_FONT_SETPOINT_ID = "font_setpoint_id"
 CONF_FONT_TEMP_ID = "font_temp_id"
 CONF_FONT_ERROR_ID = "font_error_id"
-CONF_BACKLIGHT_ID = "backlight_id"
-
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(M5DialThermostat),
@@ -56,41 +47,8 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_FONT_SETPOINT_ID): cv.use_id(EspFont),
         cv.Optional(CONF_FONT_TEMP_ID): cv.use_id(EspFont),
         cv.Optional(CONF_FONT_ERROR_ID): cv.use_id(EspFont),
-        cv.GenerateID(CONF_BACKLIGHT_ID): cv.declare_id(ledc_output.LEDCOutput),
     }
 ).extend(cv.COMPONENT_SCHEMA)
-
-
-def _normalize_pin(value):
-    if isinstance(value, str):
-        if value.upper().startswith("GPIO"):
-            return int(value[4:])
-        return int(value)
-    return int(value)
-
-
-async def _create_ledc_output(pin, component_id):
-    # NOTE: pin is validated manually for LEDCOutput output pin generation.
-    pin_id = ID(f"{component_id}_pin", is_declaration=True, type=esp32_gpio.ESP32InternalGPIOPin)
-    ledc_config = {
-        CONF_ID: component_id,
-        CONF_PIN: {
-            CONF_ID: pin_id,
-            CONF_NUMBER: _normalize_pin(pin),
-            CONF_INVERTED: False,
-            CONF_MODE: {
-                CONF_OUTPUT: True,
-            },
-        },
-        CONF_FREQUENCY: 1000.0,
-    }
-    await ledc_output.to_code(ledc_config)
-    return component_id
-
-
-async def _create_ledc_backlight(backlight_id):
-    await _create_ledc_output("GPIO9", backlight_id)
-    return backlight_id
 
 
 async def _create_buzzer(owner_id):
@@ -117,9 +75,6 @@ async def to_code(config):
 
     display_obj = await cg.get_variable(config[CONF_DISPLAY_ID])
     cg.add(var.set_display(display_obj))
-
-    backlight_id = await _create_ledc_backlight(config[CONF_BACKLIGHT_ID])
-    cg.add(var.set_backlight(await cg.get_variable(backlight_id)))
 
     await _create_buzzer(str(config[CONF_ID]))
 

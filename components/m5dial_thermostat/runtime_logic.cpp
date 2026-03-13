@@ -73,5 +73,19 @@ namespace esphome
       return now_ms - last_interaction_ms > idle_timeout_ms;
     }
 
+    uint8_t map_backlight_level(uint8_t level, bool active_low)
+    {
+      if (!active_low)
+      {
+        return level;
+      }
+      return static_cast<uint8_t>(255U - level);
+    }
+
+    uint32_t level_to_ledc_duty_10bit(uint8_t level)
+    {
+      return (static_cast<uint32_t>(level) * 1023U) / 255U;
+    }
+
   } // namespace m5dial_thermostat
 } // namespace esphome

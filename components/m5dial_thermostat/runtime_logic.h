@@ -42,5 +42,11 @@ namespace esphome
     bool should_idle_dim(uint32_t now_ms, uint32_t last_interaction_ms,
                          uint32_t idle_timeout_ms);
 
+    // Converts logical brightness [0..255] to hardware level considering polarity.
+    uint8_t map_backlight_level(uint8_t level, bool active_low);
+
+    // Converts [0..255] level to 10-bit LEDC duty [0..1023].
+    uint32_t level_to_ledc_duty_10bit(uint8_t level);
+
   } // namespace m5dial_thermostat
 } // namespace esphome

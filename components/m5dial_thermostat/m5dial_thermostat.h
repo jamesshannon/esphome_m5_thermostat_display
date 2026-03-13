@@ -5,7 +5,6 @@
 
 #include "esphome/components/api/custom_api_device.h"
 #include "esphome/components/display/display.h"
-#include "esphome/components/output/float_output.h"
 #include "esphome/components/select/select.h"
 #include "esphome/core/component.h"
 #include "esphome/core/string_ref.h"
@@ -42,7 +41,6 @@ namespace esphome
 
       void set_entity_id(const std::string &entity_id) { this->entity_id_ = entity_id; }
       void set_display(display::Display *display) { this->display_ = display; }
-      void set_backlight(output::FloatOutput *backlight) { this->backlight_ = backlight; }
       void set_font_mode(display::BaseFont *font) { this->font_mode_ = font; }
       void set_font_setpoint(display::BaseFont *font)
       {
@@ -137,7 +135,6 @@ namespace esphome
 
       std::string entity_id_;
       display::Display *display_{nullptr};
-      output::FloatOutput *backlight_{nullptr};
       display::BaseFont *font_mode_{nullptr};
       display::BaseFont *font_setpoint_{nullptr};
       display::BaseFont *font_temp_{nullptr};
