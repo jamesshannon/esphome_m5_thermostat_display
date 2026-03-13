@@ -20,7 +20,7 @@ Home Assistant service calls when users adjust temperature or cycle modes.
   `select` entity.
 - Uses direct LEDC control in C++ for backlight (`GPIO9`) and buzzer (`GPIO3`).
 - Auto-creates the unit select entity (`celsius`, `fahrenheit`).
-- Accepts user-provided font IDs for mode/setpoint/temp/error text.
+- Accepts user-provided font IDs for mode/setpoint/temp text.
 
 ## Project structure
 
@@ -46,9 +46,8 @@ Home Assistant service calls when users adjust temperature or cycle modes.
 
 ## Usage
 
-Copy or mount this repo in your ESPHome config path and point
-`external_components` to the `components` directory. Then use `thermostat.yaml`
-(or adapt it) as your primary config.
+Load the component directly from GitHub via `external_components`, then use
+`thermostat.yaml` (or adapt it) as your primary config.
 
 ```yaml
 ---
@@ -92,8 +91,10 @@ display:
 
 external_components:
   - source:
-      type: local
-      path: components
+      type: git
+      url: https://github.com/jamesshannon/esphome_m5_thermostat_display
+      ref: main
+    components: [m5dial_thermostat]
 
 m5dial_thermostat:
   entity_id: climate.my_thermostat
@@ -127,6 +128,7 @@ esphome run thermostat-debug.yaml --device /dev/<your-usb-serial-port>
 - enables `DEBUG_TEST` at build time so it works without Home Assistant
   subscriptions
 - keeps the same hardware/component wiring
+- use long-press on the mode button (~1.2s) to toggle simulated comms state
 
 ```yaml
 ---
@@ -172,8 +174,10 @@ display:
 
 external_components:
   - source:
-      type: local
-      path: components
+      type: git
+      url: https://github.com/jamesshannon/esphome_m5_thermostat_display
+      ref: main
+    components: [m5dial_thermostat]
 
 m5dial_thermostat:
   entity_id: climate.my_thermostat
@@ -205,7 +209,7 @@ m5dial_thermostat:
 The component currently expects fixed GPIO wiring matching M5 Dial for:
 - Rotary encoder channels: `GPIO40`, `GPIO41`
 - Rotary button: `GPIO42`
-- Hold/button support pin: `GPIO46`
+- Reserved hold pin: `GPIO46`
 - Backlight output: `GPIO9`
 - Buzzer output: `GPIO3`
 - Display SPI pins: `GPIO5`, `GPIO6`, `GPIO7`, `GPIO4`, `GPIO8`
@@ -232,3 +236,5 @@ standalone via `tests/esphome_stubs.h`.
   Assistant for thermostat state control.
 - The setup priority is `AFTER_CONNECTION` so HA subscriptions are initialized
   after API readiness.
+- In no-connection UI, backlight still follows idle dimming; any button press
+  edge or rotary movement wakes brightness back to active.

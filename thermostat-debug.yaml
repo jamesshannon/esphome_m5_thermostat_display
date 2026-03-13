@@ -59,8 +59,10 @@ font:
 
 external_components:
   - source:
-      type: local
-      path: components
+      type: git
+      url: https://github.com/jamesshannon/esphome_m5_thermostat_display
+      ref: main
+    components: [m5dial_thermostat]
 
 m5dial_thermostat:
   entity_id: climate.my_thermostat
