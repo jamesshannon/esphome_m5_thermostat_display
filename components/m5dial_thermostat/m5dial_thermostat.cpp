@@ -357,6 +357,8 @@ namespace esphome
         this->stop_buzzer_tone_();
       }
       this->start_buzzer_tone_(tone_spec.frequency_hz);
+      // Intentionally block for these very short tones (<=20 ms). A scheduler-
+      // based stop can add jitter on fast knob twists, which sounds less natural.
       delay(tone_spec.duration_ms);
       this->stop_buzzer_tone_();
     }
