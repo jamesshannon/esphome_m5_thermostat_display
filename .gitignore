@@ -3,3 +3,5 @@
 .platformio-home
 .platformio_home
 **/__pycache__
+tests/.build/
+tests/test_*
