@@ -534,8 +534,6 @@ namespace esphome
       this->mark_ha_state_received_();
 
       const float previous_local_setpoint = this->local_setpoint_;
-      const float previous_target_temp = this->target_temp_;
-      const bool was_dirty = this->local_setpoint_dirty_;
       float value = NAN;
       if (!this->parse_float_(state, &value))
       {
@@ -550,10 +548,6 @@ namespace esphome
         {
           this->needs_redraw_ = true;
         }
-        ESP_LOGD(TAG,
-                 "HA target update: parse failed; target=nan local=%.2f dirty=%s",
-                 this->local_setpoint_,
-                 this->local_setpoint_dirty_ ? "true" : "false");
         return;
       }
 
@@ -568,11 +562,6 @@ namespace esphome
       {
         this->needs_redraw_ = true;
       }
-      ESP_LOGD(TAG,
-               "HA target update: target %.2f->%.2f local %.2f->%.2f dirty %s->%s",
-               previous_target_temp, this->target_temp_, previous_local_setpoint,
-               this->local_setpoint_, was_dirty ? "true" : "false",
-               this->local_setpoint_dirty_ ? "true" : "false");
     }
 
     void M5DialThermostat::on_supported_modes(StringRef state)
@@ -629,10 +618,6 @@ namespace esphome
       if (!should_send_setpoint(this->local_setpoint_dirty_,
                                 this->local_setpoint_, this->comms_ok_))
       {
-        ESP_LOGD(TAG,
-                 "Setpoint send skipped: dirty=%s setpoint=%.2f comms_ok=%s",
-                 this->local_setpoint_dirty_ ? "true" : "false",
-                 this->local_setpoint_, this->comms_ok_ ? "true" : "false");
         return;
       }
 
@@ -640,14 +625,9 @@ namespace esphome
       std::map<std::string, std::string> data;
       data["entity_id"] = this->entity_id_;
       data["temperature"] = std::to_string(this->local_setpoint_);
-      ESP_LOGD(TAG, "Sending setpoint: entity=%s temp=%.2f",
-               this->entity_id_.c_str(), this->local_setpoint_);
       this->call_homeassistant_service("climate.set_temperature", data);
-      ESP_LOGD(TAG, "Setpoint service call sent");
 #endif
       this->local_setpoint_dirty_ = false;
-      ESP_LOGD(TAG, "Setpoint send done: dirty=false local=%.2f target=%.2f",
-               this->local_setpoint_, this->target_temp_);
     }
 
     void M5DialThermostat::send_mode_to_ha_(HvacMode mode)
@@ -702,8 +682,6 @@ namespace esphome
       this->last_interaction_ = millis();
       this->set_display_brightness_(true);
       this->needs_redraw_ = true;
-      ESP_LOGD(TAG, "Local setpoint changed: local=%.2f target=%.2f dir=%d",
-               this->local_setpoint_, this->target_temp_, direction);
 
       if (direction > 0)
       {
@@ -716,7 +694,6 @@ namespace esphome
 
       this->set_timeout("send_setpoint", kSetpointDebounceMs, [this]()
                         { this->send_setpoint_to_ha_(); });
-      ESP_LOGD(TAG, "Queued setpoint send in %u ms", kSetpointDebounceMs);
     }
 
     void M5DialThermostat::encoder_isr_handler_(void *arg)

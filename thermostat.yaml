@@ -14,6 +14,9 @@ psram:
   speed: 80MHz
 
 api:
+  homeassistant_services: true
+  homeassistant_states: true
+  # In Home Assistant, allow action/service calls from this ESPHome node.
 
 wifi:
   ssid: !secret wifi_ssid

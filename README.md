@@ -66,6 +66,8 @@ psram:
   speed: 80MHz
 
 api:
+  homeassistant_services: true
+  homeassistant_states: true
 
 wifi:
   ssid: !secret wifi_ssid
@@ -89,6 +91,20 @@ display:
     invert_colors: true
     update_interval: never
 
+font:
+  - file: "gfonts://Roboto"
+    id: font_mode
+    size: 16
+    bpp: 4
+  - file: "gfonts://Roboto"
+    id: font_setpoint
+    size: 20
+    bpp: 4
+  - file: "gfonts://Roboto"
+    id: font_temp
+    size: 48
+    bpp: 4
+
 external_components:
   - source:
       type: git
@@ -99,10 +115,9 @@ external_components:
 m5dial_thermostat:
   entity_id: climate.my_thermostat
   display_id: m5dial_display
-  # Optional font IDs (recommended for full UI text rendering):
-  # font_mode_id: font_mode
-  # font_setpoint_id: font_setpoint
-  # font_temp_id: font_temp
+  font_mode_id: font_mode
+  font_setpoint_id: font_setpoint
+  font_temp_id: font_temp
   # Optional settings
   # active_brightness: 255
   # idle_brightness: 50
@@ -194,6 +209,9 @@ m5dial_thermostat:
 - `entity_id` (required): Home Assistant climate entity ID, e.g.
   `climate.my_thermostat`.
 - `display_id` (required): Display component ID, e.g. `m5dial_display`.
+- `font_mode_id` / `font_setpoint_id` / `font_temp_id` (recommended): Font IDs
+  used for center text rendering. If omitted, text is hidden but arc/spinner UI
+  still renders.
 - `active_brightness` (optional, default `255`): LEDC backlight level while
   active.
 - `idle_brightness` (optional, default `50`): LEDC backlight level when idle.
@@ -214,6 +232,14 @@ The component currently expects fixed GPIO wiring matching M5 Dial for:
 - Backlight output: `GPIO9`
 - Buzzer output: `GPIO3`
 - Display SPI pins: `GPIO5`, `GPIO6`, `GPIO7`, `GPIO4`, `GPIO8`
+
+## Home Assistant setup
+
+- Add this ESPHome node in Home Assistant and verify it is connected.
+- In the ESPHome integration/device options for this node, enable Home
+  Assistant actions/service calls from the device.
+- Without that permission, state subscriptions can still work but local
+  setpoint/mode changes from the dial will not be applied in HA.
 
 ## Development and testing
 

@@ -51,6 +51,8 @@ psram:
   speed: 80MHz
 
 api:
+  homeassistant_services: true
+  homeassistant_states: true
 
 wifi:
   ssid: !secret wifi_ssid
@@ -74,15 +76,35 @@ display:
     invert_colors: true
     update_interval: never  # component controls redraws
 
+# --- Fonts (recommended for text rendering) ---
+font:
+  - file: "gfonts://Roboto"
+    id: font_mode
+    size: 16
+    bpp: 4
+  - file: "gfonts://Roboto"
+    id: font_setpoint
+    size: 20
+    bpp: 4
+  - file: "gfonts://Roboto"
+    id: font_temp
+    size: 48
+    bpp: 4
+
 # --- Component ---
 external_components:
   - source:
-      type: local
-      path: components
+      type: git
+      url: https://github.com/jamesshannon/esphome_m5_thermostat_display
+      ref: main
+    components: [m5dial_thermostat]
 
 m5dial_thermostat:
   entity_id: climate.my_thermostat
   display_id: m5dial_display
+  font_mode_id: font_mode
+  font_setpoint_id: font_setpoint
+  font_temp_id: font_temp
   # Optional (shown with defaults):
   # active_brightness: 255
   # idle_brightness: 50
@@ -94,7 +116,8 @@ m5dial_thermostat:
 No `substitutions`, `globals`, `sensor`, `script`, or
 `binary_sensor` blocks are needed. The component's `__init__.py`
 auto-creates the units select entity and resolves optional
-user-provided font IDs. Backlight and buzzer are driven directly
+user-provided font IDs. If fonts are omitted, text is hidden but
+arc/spinner rendering still works. Backlight and buzzer are driven directly
 in C++ via LEDC. Encoder and button GPIOs are hardcoded in C++
 (fixed M5 Dial pins).
 
@@ -217,6 +240,10 @@ int supported_modes_count_{0};
   encoder tick using `this->set_timeout()` (see Debounce section).
 - **Mode change:** `climate.set_hvac_mode` with
   `hvac_mode: next_mode`. Fired immediately on button press.
+
+Home Assistant must allow action/service calls from this ESPHome node
+for device-originated setpoint/mode changes to apply. State subscriptions
+can still work even if actions are blocked.
 
 ---
 
