@@ -20,8 +20,10 @@ Home Assistant service calls when users adjust temperature or cycle modes.
 - Supports Celsius/Fahrenheit unit switching through a generated
   `select` entity.
   - Unit preference is persisted on-device; first boot defaults to Fahrenheit.
+- Supports Fahrenheit display step selection through a generated
+  `select` entity (`0.5F` or `1.0F`), persisted on-device.
 - Uses direct LEDC control in C++ for backlight (`GPIO9`) and buzzer (`GPIO3`).
-- Auto-creates the unit select entity (`celsius`, `fahrenheit`).
+- Auto-creates unit and Fahrenheit-step select entities.
 - Accepts user-provided font IDs for mode/setpoint/temp text.
 
 ## Project structure
@@ -213,6 +215,11 @@ m5dial_thermostat:
 - `display_id` (required): Display component ID, e.g. `m5dial_display`.
 - HVAC mode cycling uses only `off`, `cool`, `heat`, and `fan_only` even if
   HA exposes additional modes (for example `auto`).
+- Auto-created selects:
+  - `Unit`: `celsius` / `fahrenheit`
+  - `Fahrenheit Step`: `0.5F` / `1.0F`
+  - In `1.0F` mode, current/setpoint text is rendered as integer (`69`).
+  - In `0.5F` mode, Fahrenheit text is rendered with one decimal (`69.0`).
 - `font_mode_id` / `font_setpoint_id` / `font_temp_id` (recommended): Font IDs
   used for center text rendering. If omitted, text is hidden but arc/spinner UI
   still renders.

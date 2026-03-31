@@ -296,6 +296,7 @@ namespace esphome
         size_t size,
         float temp,
         bool fahrenheit,
+        bool integer_fahrenheit_display,
         const char *prefix,
         const char *suffix)
     {
@@ -303,6 +304,12 @@ namespace esphome
       if (fahrenheit)
       {
         value = celsius_to_fahrenheit(value);
+      }
+      if (fahrenheit && integer_fahrenheit_display)
+      {
+        const long rounded = std::lround(value);
+        std::snprintf(out, size, "%s%ld %s", prefix, rounded, suffix);
+        return;
       }
       std::snprintf(out, size, "%s%.1f %s", prefix, value, suffix);
     }
@@ -404,7 +411,8 @@ namespace esphome
       {
         char text[24];
         format_temperature(text, sizeof(text), state.current_temp,
-                           state.display_fahrenheit, "", unit_suffix);
+                           state.display_fahrenheit,
+                           state.integer_fahrenheit_display, "", unit_suffix);
         draw_text(d, kDefaultCenterX, kTempCenterY, fonts.temp,
                   text, kColorText);
       }
@@ -414,7 +422,8 @@ namespace esphome
       {
         char text[32];
         format_temperature(text, sizeof(text), state.local_setpoint,
-                           state.display_fahrenheit, "", unit_suffix);
+                           state.display_fahrenheit,
+                           state.integer_fahrenheit_display, "", unit_suffix);
         draw_text(d, kDefaultCenterX, kSetpointY, fonts.setpoint,
                   text, kColorTextMuted,
                   display::TextAlign::TOP_CENTER);

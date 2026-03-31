@@ -53,6 +53,7 @@ namespace esphome
       HvacMode hvac_mode;
       HvacAction hvac_action;
       bool display_fahrenheit;
+      bool integer_fahrenheit_display;
       bool comms_ok;
       float reconnect_spinner_start_deg;
     };

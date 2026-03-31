@@ -18,6 +18,9 @@ M5DialThermostat = m5dial_ns.class_(
     "M5DialThermostat", cg.Component, api_ns.class_("CustomAPIDevice")
 )
 UnitSelect = m5dial_ns.class_("UnitSelect", select.Select, cg.Component)
+FahrenheitStepSelect = m5dial_ns.class_(
+    "FahrenheitStepSelect", select.Select, cg.Component
+)
 
 DEPENDENCIES = ["api"]
 # `font` is optional; only load it when user provides explicit font IDs.
@@ -61,6 +64,21 @@ async def _create_unit_select(owner_id, thermostat):
     return unit
 
 
+async def _create_fahrenheit_step_select(owner_id, thermostat):
+    step_id = ID(f"{owner_id}_fahrenheit_step_select", is_declaration=True,
+                 type=FahrenheitStepSelect)
+    step_config = {
+        cv.GenerateID(): step_id,
+        CONF_NAME: "Fahrenheit Step",
+        CONF_DISABLED_BY_DEFAULT: False,
+    }
+    step_select = await select.new_select(
+        step_config, options=["0.5F", "1.0F"]
+    )
+    cg.add(step_select.set_parent(thermostat))
+    return step_select
+
+
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
@@ -78,6 +96,10 @@ async def to_code(config):
 
     unit_select = await _create_unit_select(str(config[CONF_ID]), var)
     cg.add(var.set_unit_select(unit_select))
+    fahrenheit_step_select = await _create_fahrenheit_step_select(
+        str(config[CONF_ID]), var
+    )
+    cg.add(var.set_fahrenheit_step_select(fahrenheit_step_select))
 
     cg.add(var.set_active_brightness(config[CONF_ACTIVE_BRIGHTNESS]))
     cg.add(var.set_idle_brightness(config[CONF_IDLE_BRIGHTNESS]))

@@ -33,6 +33,7 @@ static void test_render_thermostat_draw_budget() {
       .hvac_mode = HvacMode::kHeat,
       .hvac_action = HvacAction::kHeating,
       .display_fahrenheit = false,
+      .integer_fahrenheit_display = false,
       .comms_ok = true,
       .reconnect_spinner_start_deg = 0.0f,
   };
@@ -55,6 +56,7 @@ static void test_render_no_connection_draw_budget() {
       .hvac_mode = HvacMode::kUnknown,
       .hvac_action = HvacAction::kUnknown,
       .display_fahrenheit = false,
+      .integer_fahrenheit_display = false,
       .comms_ok = false,
       .reconnect_spinner_start_deg = 180.0f,
   };

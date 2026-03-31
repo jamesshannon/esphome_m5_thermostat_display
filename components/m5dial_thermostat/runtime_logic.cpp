@@ -234,6 +234,37 @@ namespace esphome
       return quantize_tenths(previous_display) != quantize_tenths(next_display);
     }
 
+    float get_effective_setpoint_step_c(bool display_fahrenheit,
+                                        float climate_step_c,
+                                        float fahrenheit_step_f)
+    {
+      constexpr float kDefaultClimateStepC = 0.5f;
+      constexpr float kHalfFStep = 0.5f;
+      constexpr float kOneFStep = 1.0f;
+      constexpr float kFToCScale = 5.0f / 9.0f;
+
+      const float valid_climate_step =
+          climate_step_c > 0.0f ? climate_step_c : kDefaultClimateStepC;
+      if (!display_fahrenheit)
+      {
+        return valid_climate_step;
+      }
+
+      const bool one_degree_mode = std::fabs(fahrenheit_step_f - kOneFStep) < 1e-3f;
+      const float step_f = one_degree_mode ? kOneFStep : kHalfFStep;
+      return step_f * kFToCScale;
+    }
+
+    bool use_integer_fahrenheit_display(bool display_fahrenheit,
+                                        float fahrenheit_step_f)
+    {
+      if (!display_fahrenheit)
+      {
+        return false;
+      }
+      return std::fabs(fahrenheit_step_f - 1.0f) < 1e-3f;
+    }
+
     uint8_t map_backlight_level(uint8_t level, bool active_low)
     {
       if (!active_low)

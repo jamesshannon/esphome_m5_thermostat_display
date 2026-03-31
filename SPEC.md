@@ -170,7 +170,8 @@ CONFIG_SCHEMA = cv.Schema({
 6. Resolve optional user-provided font IDs for
    mode/setpoint/temp/error rendering
 7. Auto-create `UnitSelect` (options: `"celsius"`, `"fahrenheit"`)
-8. Wire all resolved sub-components to main class via `set_*()` calls
+8. Auto-create `FahrenheitStepSelect` (options: `"0.5F"`, `"1.0F"`)
+9. Wire all resolved sub-components to main class via `set_*()` calls
 
 ---
 
@@ -275,6 +276,7 @@ component class (use `this->` prefix for all access):
 | `max_temp_` | float | From HA entity |
 | `temp_step_` | float | From HA `target_temp_step` |
 | `display_fahrenheit_` | bool | From UnitSelect |
+| `fahrenheit_step_f_` | float | From FahrenheitStepSelect (`0.5`/`1.0`) |
 | `last_ha_update_` | uint32_t | millis() of last HA update |
 | `last_interaction_` | uint32_t | millis() of last input |
 | `comms_ok_` | bool | False if HA timeout exceeded |
@@ -289,6 +291,7 @@ component class (use `this->` prefix for all access):
 | `font_setpoint_` | `font::Font*` | Optional user-configured font |
 | `font_temp_` | `font::Font*` | Optional user-configured font |
 | `unit_select_` | `UnitSelect*` | Auto-created |
+| `fahrenheit_step_select_` | `FahrenheitStepSelect*` | Auto-created |
 
 ---
 
@@ -374,6 +377,12 @@ to HA (options: `"celsius"`, `"fahrenheit"`) that controls
 calls remain in C; conversion is display-only.
 The unit selection is persisted in device preferences and restored on boot.
 If no saved preference exists, default to Fahrenheit.
+
+The component also exposes a second select for Fahrenheit display step:
+`"0.5F"` or `"1.0F"`. In Fahrenheit mode this controls encoder detent
+behavior and text formatting:
+- `"0.5F"`: one decimal always (for example `69.0`, `69.5`)
+- `"1.0F"`: integer display (for example `69`, `70`)
 
 ### UnitSelect class
 
@@ -485,7 +494,9 @@ exactly one tick.
 
 On each tick:
 1. If `!this->comms_ok_` or `isnan(this->target_temp_)`: return
-2. Adjust `this->local_setpoint_` by `+/- this->temp_step_`,
+2. Adjust `this->local_setpoint_` by display-aware step:
+   - Celsius mode: `+/- this->temp_step_`
+   - Fahrenheit mode: `+/- 0.5F` or `+/- 1.0F` converted to C
    clamped to `[this->min_temp_, this->max_temp_]`
 3. Set `this->local_setpoint_dirty_ = true`
 4. Reset backlight / `this->last_interaction_`
@@ -699,9 +710,9 @@ White background. All text horizontally centered. *Current temp* is centered
 vertically and the other text is placed in relation to *Current temp*.
 
 1. **Current temp** (~48px, black `#000000`, centered vertically):
-   e.g. `"21 °C"` --
+   e.g. `"21.0 °C"` --
    display unit applied, formatted via `snprintf` into stack
-   buffer
+   buffer. In Fahrenheit with `1.0F` step mode, render as integer.
 
 2. **Mode label** (~16px, black `#000000`, bottom of text is 10
    pixels above the top of the *Current temp* text):
@@ -709,7 +720,8 @@ vertically and the other text is placed in relation to *Current temp*.
    `"Heating"`, `"Cooling"`, `"Fan"`, `"Idle"`
 3. **Setpoint** (~20px, muted `#555555`, top of text is 15 pixels below
    bottom of the *Current temp* text): e.g. `"22.5 °C"`
-   -- omitted if unavailable
+   -- omitted if unavailable. In Fahrenheit with `0.5F` mode,
+   always render one decimal; with `1.0F` mode render as integer.
 
 ### Lost Comms Screen
 

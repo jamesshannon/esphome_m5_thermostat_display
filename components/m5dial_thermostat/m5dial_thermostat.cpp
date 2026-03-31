@@ -1,9 +1,10 @@
 #include "m5dial_thermostat.h"
 
 #include <algorithm>
-#include <map>
 #include <cstdlib>
+#include <cmath>
 #include <cstring>
+#include <map>
 #include <esp_err.h>
 #include <driver/gpio.h>
 #include <driver/ledc.h>
@@ -21,6 +22,8 @@ namespace
   constexpr char kModeFanOnly[] = "fan_only";
   constexpr char kModeAuto[] = "auto";
   constexpr char kModeDry[] = "dry";
+  constexpr char kStepHalfF[] = "0.5F";
+  constexpr char kStepOneF[] = "1.0F";
 
   constexpr char kActionHeating[] = "heating";
   constexpr char kActionCooling[] = "cooling";
@@ -129,6 +132,20 @@ namespace
            mode == HvacMode::kHeat || mode == HvacMode::kFanOnly;
   }
 
+  float parse_fahrenheit_step_option(const std::string &value)
+  {
+    if (value == kStepOneF)
+    {
+      return 1.0f;
+    }
+    return 0.5f;
+  }
+
+  const char *fahrenheit_step_to_option(float step_f)
+  {
+    return std::fabs(step_f - 1.0f) < 1e-3f ? kStepOneF : kStepHalfF;
+  }
+
 } // namespace
 
 namespace esphome
@@ -172,6 +189,45 @@ namespace esphome
       }
       const uint8_t stored_unit = fahrenheit ? 1U : 0U;
       if (this->pref_.save(&stored_unit))
+      {
+        global_preferences->sync();
+      }
+    }
+
+    void FahrenheitStepSelect::setup()
+    {
+      this->pref_ = this->make_entity_preference<uint8_t>(kPreferenceVersion);
+
+      uint8_t stored = 0xFF;
+      const bool has_saved = this->pref_.load(&stored) &&
+                             (stored == 0U || stored == 1U);
+      const float step_f = has_saved ? (stored == 1U ? 1.0f : 0.5f) : 0.5f;
+      this->publish_state(fahrenheit_step_to_option(step_f));
+      if (this->parent_ != nullptr)
+      {
+        this->parent_->set_fahrenheit_step_f(step_f);
+      }
+      if (!has_saved)
+      {
+        const uint8_t default_value = 0U;
+        if (this->pref_.save(&default_value))
+        {
+          global_preferences->sync();
+        }
+      }
+    }
+
+    void FahrenheitStepSelect::control(const std::string &value)
+    {
+      const float step_f = parse_fahrenheit_step_option(value);
+      this->publish_state(fahrenheit_step_to_option(step_f));
+      if (this->parent_ != nullptr)
+      {
+        this->parent_->set_fahrenheit_step_f(step_f);
+      }
+
+      const uint8_t stored = std::fabs(step_f - 1.0f) < 1e-3f ? 1U : 0U;
+      if (this->pref_.save(&stored))
       {
         global_preferences->sync();
       }
@@ -226,6 +282,17 @@ namespace esphome
         return;
       }
       this->display_fahrenheit_ = fahrenheit;
+      this->needs_redraw_ = true;
+    }
+
+    void M5DialThermostat::set_fahrenheit_step_f(float step_f)
+    {
+      const float normalized = std::fabs(step_f - 1.0f) < 1e-3f ? 1.0f : 0.5f;
+      if (std::fabs(this->fahrenheit_step_f_ - normalized) < 1e-3f)
+      {
+        return;
+      }
+      this->fahrenheit_step_f_ = normalized;
       this->needs_redraw_ = true;
     }
 
@@ -723,7 +790,8 @@ namespace esphome
 #endif
       const SetpointAdjustResult result =
           adjust_setpoint(this->local_setpoint_, this->target_temp_,
-                          this->min_temp_, this->max_temp_, this->temp_step_,
+                          this->min_temp_, this->max_temp_,
+                          this->get_setpoint_step_c_(),
                           direction);
       if (!result.changed)
       {
@@ -944,6 +1012,8 @@ namespace esphome
       state.hvac_mode = this->hvac_mode_;
       state.hvac_action = this->hvac_action_;
       state.display_fahrenheit = this->display_fahrenheit_;
+      state.integer_fahrenheit_display =
+          this->use_integer_fahrenheit_display_();
       state.comms_ok = this->comms_ok_;
       state.reconnect_spinner_start_deg = this->reconnect_spinner_start_deg_;
 
@@ -960,6 +1030,19 @@ namespace esphome
       }
 
       render_thermostat(it, state, fonts);
+    }
+
+    float M5DialThermostat::get_setpoint_step_c_() const
+    {
+      return get_effective_setpoint_step_c(this->display_fahrenheit_,
+                                           this->temp_step_,
+                                           this->fahrenheit_step_f_);
+    }
+
+    bool M5DialThermostat::use_integer_fahrenheit_display_() const
+    {
+      return use_integer_fahrenheit_display(this->display_fahrenheit_,
+                                            this->fahrenheit_step_f_);
     }
 
     void M5DialThermostat::set_writer_()
@@ -1014,6 +1097,7 @@ namespace esphome
       this->min_temp_ = 15.0f;
       this->max_temp_ = 30.0f;
       this->temp_step_ = 0.5f;
+      this->fahrenheit_step_f_ = 0.5f;
       this->last_api_connected_ms_ = this->last_interaction_;
       this->needs_redraw_ = true;
 #endif
@@ -1134,6 +1218,7 @@ namespace esphome
       ESP_LOGCONFIG(TAG, "  Idle timeout: %u ms", this->idle_timeout_ms_);
       ESP_LOGCONFIG(TAG, "  Comms timeout: %u ms", this->comms_timeout_ms_);
       ESP_LOGCONFIG(TAG, "  Sounds: %s", this->enable_sounds_ ? "yes" : "no");
+      ESP_LOGCONFIG(TAG, "  Fahrenheit display step: %.1f", this->fahrenheit_step_f_);
     }
 
   } // namespace m5dial_thermostat

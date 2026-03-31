@@ -152,6 +152,23 @@ static void test_is_setpoint_ack_within_tolerance() {
   assert(!is_setpoint_ack_within_tolerance(20.0f, NAN, 0.5f));
 }
 
+static void test_get_effective_setpoint_step_c() {
+  assert(std::fabs(get_effective_setpoint_step_c(false, 0.5f, 1.0f) - 0.5f) <
+         1e-6f);
+  assert(std::fabs(get_effective_setpoint_step_c(false, 0.0f, 0.5f) - 0.5f) <
+         1e-6f);
+  assert(std::fabs(get_effective_setpoint_step_c(true, 0.5f, 0.5f) -
+                   (0.5f * 5.0f / 9.0f)) < 1e-6f);
+  assert(std::fabs(get_effective_setpoint_step_c(true, 0.5f, 1.0f) -
+                   (1.0f * 5.0f / 9.0f)) < 1e-6f);
+}
+
+static void test_use_integer_fahrenheit_display() {
+  assert(!use_integer_fahrenheit_display(false, 1.0f));
+  assert(!use_integer_fahrenheit_display(true, 0.5f));
+  assert(use_integer_fahrenheit_display(true, 1.0f));
+}
+
 int main() {
   test_consume_encoder_counts();
   test_tone_spec_and_retrigger();
@@ -166,5 +183,7 @@ int main() {
   test_has_display_temp_changed();
   test_should_send_setpoint();
   test_is_setpoint_ack_within_tolerance();
+  test_get_effective_setpoint_step_c();
+  test_use_integer_fahrenheit_display();
   return 0;
 }

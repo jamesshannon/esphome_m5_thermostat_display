@@ -33,6 +33,20 @@ namespace esphome
       static constexpr uint32_t kPreferenceVersion = 0x20260331UL;
     };
 
+    class FahrenheitStepSelect : public select::Select, public Component
+    {
+    public:
+      void set_parent(M5DialThermostat *parent) { this->parent_ = parent; }
+      void setup() override;
+
+    protected:
+      void control(const std::string &value) override;
+
+      M5DialThermostat *parent_{nullptr};
+      ESPPreferenceObject pref_;
+      static constexpr uint32_t kPreferenceVersion = 0x20260401UL;
+    };
+
     class M5DialThermostat : public Component, public api::CustomAPIDevice
     {
     public:
@@ -47,6 +61,10 @@ namespace esphome
       }
       void set_font_temp(display::BaseFont *font) { this->font_temp_ = font; }
       void set_unit_select(UnitSelect *unit_select) { this->unit_select_ = unit_select; }
+      void set_fahrenheit_step_select(FahrenheitStepSelect *step_select)
+      {
+        this->fahrenheit_step_select_ = step_select;
+      }
       void set_active_brightness(int brightness)
       {
         this->active_brightness_ = static_cast<uint8_t>(brightness);
@@ -60,6 +78,7 @@ namespace esphome
       void set_enable_sounds(bool enable_sounds) { this->enable_sounds_ = enable_sounds; }
 
       void set_fahrenheit(bool fahrenheit);
+      void set_fahrenheit_step_f(float step_f);
 
       void setup() override;
       void loop() override;
@@ -116,6 +135,8 @@ namespace esphome
       void apply_backlight_policy_(uint32_t now_ms);
       void update_no_connection_animation_(uint32_t now_ms);
       bool try_redraw_(uint32_t now_ms);
+      float get_setpoint_step_c_() const;
+      bool use_integer_fahrenheit_display_() const;
 
       static constexpr uint8_t kEncoderPinA = 40;
       static constexpr uint8_t kEncoderPinB = 41;
@@ -150,6 +171,7 @@ namespace esphome
       display::BaseFont *font_setpoint_{nullptr};
       display::BaseFont *font_temp_{nullptr};
       UnitSelect *unit_select_{nullptr};
+      FahrenheitStepSelect *fahrenheit_step_select_{nullptr};
 
       float current_temp_{NAN};
       float target_temp_{NAN};
@@ -165,6 +187,7 @@ namespace esphome
       float min_temp_{15.0f};
       float max_temp_{30.0f};
       float temp_step_{0.5f};
+      float fahrenheit_step_f_{0.5f};
 
       bool display_fahrenheit_{false};
       bool comms_ok_{false};

@@ -93,6 +93,15 @@ namespace esphome
     bool has_display_temp_changed(float previous_temp_c, float next_temp_c,
                                   bool display_fahrenheit);
 
+    // Returns setpoint step in Celsius used for encoder detents.
+    float get_effective_setpoint_step_c(bool display_fahrenheit,
+                                        float climate_step_c,
+                                        float fahrenheit_step_f);
+
+    // Returns true when Fahrenheit display should be integer-only.
+    bool use_integer_fahrenheit_display(bool display_fahrenheit,
+                                        float fahrenheit_step_f);
+
     // Converts logical brightness [0..255] to hardware level considering polarity.
     uint8_t map_backlight_level(uint8_t level, bool active_low);
 
