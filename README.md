@@ -14,6 +14,7 @@ Home Assistant service calls when users adjust temperature or cycle modes.
 - Subscribes to Home Assistant state updates for a selected climate entity.
 - Lets users change setpoint with the rotary encoder.
 - Lets users cycle HVAC modes with the center button.
+  - Mode cycle subset is limited to: `off`, `cool`, `heat`, `fan_only`.
 - Shows connection status and falls back to offline/idle UI when HA is not
   responding.
 - Supports Celsius/Fahrenheit unit switching through a generated
@@ -209,6 +210,8 @@ m5dial_thermostat:
 - `entity_id` (required): Home Assistant climate entity ID, e.g.
   `climate.my_thermostat`.
 - `display_id` (required): Display component ID, e.g. `m5dial_display`.
+- HVAC mode cycling uses only `off`, `cool`, `heat`, and `fan_only` even if
+  HA exposes additional modes (for example `auto`).
 - `font_mode_id` / `font_setpoint_id` / `font_temp_id` (recommended): Font IDs
   used for center text rendering. If omitted, text is hidden but arc/spinner UI
   still renders.

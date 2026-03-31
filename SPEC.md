@@ -192,7 +192,7 @@ API). Target the single configured `entity_id`:
 | `current_temperature` | `current_temp_` | float | Reported room temperature. NaN if unavail |
 | `temperature` | `target_temp_` | float | Setpoint. May be NaN if climate device is off |
 | `hvac_action` | `hvac_action_` | HvacAction enum | Parse string |
-| `hvac_modes` | `supported_modes_[]` | HvacMode[] | Parse once |
+| `hvac_modes` | `supported_modes_[]` | HvacMode[] | Parse once, filtered to `off/cool/heat/fan_only` |
 | `min_temp` | `min_temp_` | float | Default 15 |
 | `max_temp` | `max_temp_` | float | Default 30 |
 | `target_temp_step` | `temp_step_` | float | Default 0.5 |
@@ -225,7 +225,8 @@ static HvacAction parse_hvac_action(const char *s);
 ```
 
 For `supported_modes_` (parsed once from `hvac_modes` attribute,
-which arrives as a comma-separated string):
+which arrives as a comma-separated string, then filtered to only
+`off`, `cool`, `heat`, and `fan_only`):
 
 ```cpp
 static constexpr int kMaxSupportedModes = 8;
@@ -494,7 +495,8 @@ needed.
 On press:
 1. If `!this->comms_ok_`: return
 2. Find current `hvac_mode_` in `supported_modes_[]`; advance
-   to next (wrapping)
+   to next (wrapping). If current mode is not in the filtered list
+   (for example HA reports `auto`), jump to the first filtered mode.
 3. Play click sound
 4. Reset backlight
 5. Call `climate.set_hvac_mode` immediately

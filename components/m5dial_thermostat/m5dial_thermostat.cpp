@@ -122,6 +122,13 @@ namespace
     return nullptr;
   }
 
+  bool is_cycle_allowed_mode(esphome::m5dial_thermostat::HvacMode mode)
+  {
+    using esphome::m5dial_thermostat::HvacMode;
+    return mode == HvacMode::kOff || mode == HvacMode::kCool ||
+           mode == HvacMode::kHeat || mode == HvacMode::kFanOnly;
+  }
+
 } // namespace
 
 namespace esphome
@@ -466,7 +473,7 @@ namespace esphome
         }
 
         const HvacMode mode = parse_hvac_mode_span(value + start, token_length);
-        if (mode == HvacMode::kUnknown)
+        if (mode == HvacMode::kUnknown || !is_cycle_allowed_mode(mode))
         {
           continue;
         }
@@ -761,12 +768,17 @@ namespace esphome
       }
 
       const int idx = this->find_mode_index_(this->hvac_mode_);
+      int next_idx = -1;
       if (idx < 0)
       {
-        return;
+        // If HA reports an unsupported mode (e.g. auto), jump to first
+        // user-cycle mode instead of making the button a no-op.
+        next_idx = 0;
       }
-
-      const int next_idx = next_wrapped_index(idx, this->supported_modes_count_);
+      else
+      {
+        next_idx = next_wrapped_index(idx, this->supported_modes_count_);
+      }
       if (next_idx < 0)
       {
         return;
@@ -944,10 +956,10 @@ namespace esphome
       this->current_temp_ = 25.0f;
       this->target_temp_ = 22.0f;
       this->local_setpoint_ = 22.0f;
-      this->supported_modes_[0] = HvacMode::kHeat;
+      this->supported_modes_[0] = HvacMode::kOff;
       this->supported_modes_[1] = HvacMode::kCool;
-      this->supported_modes_[2] = HvacMode::kHeatCool;
-      this->supported_modes_[3] = HvacMode::kAuto;
+      this->supported_modes_[2] = HvacMode::kHeat;
+      this->supported_modes_[3] = HvacMode::kFanOnly;
       this->supported_modes_count_ = 4;
       this->hvac_mode_ = HvacMode::kHeat;
       this->hvac_action_ = HvacAction::kHeating;
