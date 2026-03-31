@@ -96,6 +96,32 @@ namespace
     return esphome::m5dial_thermostat::HvacMode::kUnknown;
   }
 
+  const char *hvac_mode_to_service_string(
+      esphome::m5dial_thermostat::HvacMode mode)
+  {
+    using esphome::m5dial_thermostat::HvacMode;
+    switch (mode)
+    {
+    case HvacMode::kOff:
+      return kModeOff;
+    case HvacMode::kHeat:
+      return kModeHeat;
+    case HvacMode::kCool:
+      return kModeCool;
+    case HvacMode::kHeatCool:
+      return kModeHeatCool;
+    case HvacMode::kFanOnly:
+      return kModeFanOnly;
+    case HvacMode::kAuto:
+      return kModeAuto;
+    case HvacMode::kDry:
+      return kModeDry;
+    case HvacMode::kUnknown:
+      return nullptr;
+    }
+    return nullptr;
+  }
+
 } // namespace
 
 namespace esphome
@@ -592,6 +618,10 @@ namespace esphome
       if (!should_send_setpoint(this->local_setpoint_dirty_,
                                 this->local_setpoint_, this->comms_ok_))
       {
+        ESP_LOGD(TAG,
+                 "Setpoint send skipped: dirty=%s setpoint=%.2f comms_ok=%s",
+                 this->local_setpoint_dirty_ ? "true" : "false",
+                 this->local_setpoint_, this->comms_ok_ ? "true" : "false");
         return;
       }
 
@@ -599,6 +629,14 @@ namespace esphome
       std::map<std::string, std::string> data;
       data["entity_id"] = this->entity_id_;
       data["temperature"] = std::to_string(this->local_setpoint_);
+      const char *mode_value = hvac_mode_to_service_string(this->hvac_mode_);
+      if (mode_value != nullptr)
+      {
+        data["hvac_mode"] = mode_value;
+      }
+      ESP_LOGD(TAG, "Sending setpoint: entity=%s temp=%.2f mode=%s",
+               this->entity_id_.c_str(), this->local_setpoint_,
+               mode_value == nullptr ? "(none)" : mode_value);
       this->call_homeassistant_service("climate.set_temperature", data);
 #endif
       this->local_setpoint_dirty_ = false;
@@ -619,33 +657,15 @@ namespace esphome
       std::map<std::string, std::string> data;
       data["entity_id"] = this->entity_id_;
 
-      switch (mode)
+      const char *mode_value = hvac_mode_to_service_string(mode);
+      if (mode_value == nullptr)
       {
-      case HvacMode::kOff:
-        data["hvac_mode"] = "off";
-        break;
-      case HvacMode::kHeat:
-        data["hvac_mode"] = "heat";
-        break;
-      case HvacMode::kCool:
-        data["hvac_mode"] = "cool";
-        break;
-      case HvacMode::kHeatCool:
-        data["hvac_mode"] = "heat_cool";
-        break;
-      case HvacMode::kFanOnly:
-        data["hvac_mode"] = "fan_only";
-        break;
-      case HvacMode::kAuto:
-        data["hvac_mode"] = "auto";
-        break;
-      case HvacMode::kDry:
-        data["hvac_mode"] = "dry";
-        break;
-      case HvacMode::kUnknown:
         return;
       }
+      data["hvac_mode"] = mode_value;
 
+      ESP_LOGD(TAG, "Sending mode change: entity=%s mode=%s",
+               this->entity_id_.c_str(), mode_value);
       this->call_homeassistant_service("climate.set_hvac_mode", data);
 #else
       (void)mode;
