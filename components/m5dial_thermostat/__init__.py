@@ -20,7 +20,8 @@ M5DialThermostat = m5dial_ns.class_(
 UnitSelect = m5dial_ns.class_("UnitSelect", select.Select, cg.Component)
 
 DEPENDENCIES = ["api"]
-AUTO_LOAD = ["select", "font"]
+# `font` is optional; only load it when user provides explicit font IDs.
+AUTO_LOAD = ["select"]
 CODEOWNERS = ["@jamesshannon"]
 
 CONF_ACTIVE_BRIGHTNESS = "active_brightness"
