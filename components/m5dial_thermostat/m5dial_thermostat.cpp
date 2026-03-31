@@ -138,12 +138,42 @@ namespace esphome
 
     static const char *const TAG = "m5dial_thermostat";
 
-    void UnitSelect::control(const std::string &value)
+    void UnitSelect::setup()
     {
-      this->publish_state(value);
+      this->pref_ = this->make_entity_preference<uint8_t>(kPreferenceVersion);
+
+      uint8_t stored_unit = 0xFF;
+      const bool has_saved_unit = this->pref_.load(&stored_unit) &&
+                                  (stored_unit == 0U || stored_unit == 1U);
+      // Default to Fahrenheit when there is no stored preference.
+      const bool fahrenheit = has_saved_unit ? (stored_unit == 1U) : true;
+      this->publish_state(fahrenheit ? "fahrenheit" : "celsius");
       if (this->parent_ != nullptr)
       {
-        this->parent_->set_fahrenheit(value == "fahrenheit");
+        this->parent_->set_fahrenheit(fahrenheit);
+      }
+      if (!has_saved_unit)
+      {
+        const uint8_t default_unit = fahrenheit ? 1U : 0U;
+        if (this->pref_.save(&default_unit))
+        {
+          global_preferences->sync();
+        }
+      }
+    }
+
+    void UnitSelect::control(const std::string &value)
+    {
+      const bool fahrenheit = value == "fahrenheit";
+      this->publish_state(fahrenheit ? "fahrenheit" : "celsius");
+      if (this->parent_ != nullptr)
+      {
+        this->parent_->set_fahrenheit(fahrenheit);
+      }
+      const uint8_t stored_unit = fahrenheit ? 1U : 0U;
+      if (this->pref_.save(&stored_unit))
+      {
+        global_preferences->sync();
       }
     }
 

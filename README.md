@@ -19,6 +19,7 @@ Home Assistant service calls when users adjust temperature or cycle modes.
   responding.
 - Supports Celsius/Fahrenheit unit switching through a generated
   `select` entity.
+  - Unit preference is persisted on-device; first boot defaults to Fahrenheit.
 - Uses direct LEDC control in C++ for backlight (`GPIO9`) and buzzer (`GPIO3`).
 - Auto-creates the unit select entity (`celsius`, `fahrenheit`).
 - Accepts user-provided font IDs for mode/setpoint/temp text.

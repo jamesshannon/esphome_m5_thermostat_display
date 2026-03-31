@@ -364,6 +364,8 @@ HA always sends degrees C. The component exposes a `select` entity
 to HA (options: `"celsius"`, `"fahrenheit"`) that controls
 `this->display_fahrenheit_`. All internal logic and HA service
 calls remain in C; conversion is display-only.
+The unit selection is persisted in device preferences and restored on boot.
+If no saved preference exists, default to Fahrenheit.
 
 ### UnitSelect class
 

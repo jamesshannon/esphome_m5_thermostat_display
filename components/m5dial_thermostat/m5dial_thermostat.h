@@ -7,6 +7,7 @@
 #include "esphome/components/display/display.h"
 #include "esphome/components/select/select.h"
 #include "esphome/core/component.h"
+#include "esphome/core/preferences.h"
 #include "esphome/core/string_ref.h"
 
 #include "thermostat_ui.h"
@@ -22,11 +23,14 @@ namespace esphome
     {
     public:
       void set_parent(M5DialThermostat *parent) { this->parent_ = parent; }
+      void setup() override;
 
     protected:
       void control(const std::string &value) override;
 
       M5DialThermostat *parent_{nullptr};
+      ESPPreferenceObject pref_;
+      static constexpr uint32_t kPreferenceVersion = 0x20260331UL;
     };
 
     class M5DialThermostat : public Component, public api::CustomAPIDevice
