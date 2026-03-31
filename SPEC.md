@@ -305,11 +305,15 @@ set `this->local_setpoint_dirty_ = false`.
 
 ## Lost Communications
 
-In `loop()`, check
-`millis() - this->last_ha_update_ > this->comms_timeout_ms_`. If
-true, set `this->comms_ok_ = false` and trigger redraw. When comms
-restore (any subscription callback fires), set
-`this->comms_ok_ = true`.
+In `loop()`, derive comms health from API connection state plus first-state
+bootstrap:
+- Keep `comms_ok_ = false` until at least one HA state callback is received
+  for the configured climate entity.
+- After first state has been received, treat comms as healthy while the native
+  API is connected.
+- If API disconnects, keep comms healthy for `comms_timeout` as a grace period
+  to avoid reconnect-screen flicker on short transport blips.
+- After the grace period expires, set `comms_ok_ = false` and trigger redraw.
 
 **When `comms_ok_ == false`:**
 - Display the reconnect spinner screen (see UI)

@@ -200,7 +200,8 @@ m5dial_thermostat:
 - `idle_timeout` (optional, default `30s`): Time before dimming the backlight
   after inactivity.
 - `comms_timeout` (optional, default `30s`): Timeout before entering no-connection
-  UI.
+  UI after API disconnect (also used as reconnect grace period after first HA
+  state has been received).
 - `enable_sounds` (optional, default `true`): Enable beep feedback for UI
   interactions.
 

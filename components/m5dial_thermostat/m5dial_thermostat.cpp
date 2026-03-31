@@ -166,6 +166,14 @@ namespace esphome
       this->needs_redraw_ = true;
     }
 
+    void M5DialThermostat::mark_ha_state_received_()
+    {
+      this->last_ha_update_ = millis();
+      this->has_received_ha_state_ = true;
+      this->comms_ok_ = true;
+      this->last_api_connected_ms_ = this->last_ha_update_;
+    }
+
     void M5DialThermostat::setup_input_pins_()
     {
       gpio_set_direction(static_cast<gpio_num_t>(kEncoderPinA),
@@ -452,8 +460,7 @@ namespace esphome
 
     void M5DialThermostat::on_hvac_mode(StringRef state)
     {
-      this->last_ha_update_ = millis();
-      this->comms_ok_ = true;
+      this->mark_ha_state_received_();
 
       const HvacMode mode = this->parse_hvac_mode(state.c_str());
       if (this->hvac_mode_ != mode)
@@ -465,8 +472,7 @@ namespace esphome
 
     void M5DialThermostat::on_hvac_action(StringRef state)
     {
-      this->last_ha_update_ = millis();
-      this->comms_ok_ = true;
+      this->mark_ha_state_received_();
 
       const HvacAction action = this->parse_hvac_action(state.c_str());
       if (this->hvac_action_ != action)
@@ -478,8 +484,7 @@ namespace esphome
 
     void M5DialThermostat::on_current_temp(StringRef state)
     {
-      this->last_ha_update_ = millis();
-      this->comms_ok_ = true;
+      this->mark_ha_state_received_();
 
       const float previous_temp = this->current_temp_;
       float value = NAN;
@@ -500,8 +505,7 @@ namespace esphome
 
     void M5DialThermostat::on_target_temp(StringRef state)
     {
-      this->last_ha_update_ = millis();
-      this->comms_ok_ = true;
+      this->mark_ha_state_received_();
 
       const float previous_local_setpoint = this->local_setpoint_;
       float value = NAN;
@@ -536,16 +540,14 @@ namespace esphome
 
     void M5DialThermostat::on_supported_modes(StringRef state)
     {
-      this->last_ha_update_ = millis();
-      this->comms_ok_ = true;
+      this->mark_ha_state_received_();
       this->parse_supported_modes_(state.c_str());
       this->needs_redraw_ = true;
     }
 
     void M5DialThermostat::on_min_temp(StringRef state)
     {
-      this->last_ha_update_ = millis();
-      this->comms_ok_ = true;
+      this->mark_ha_state_received_();
 
       float value = NAN;
       if (!this->parse_float_(state, &value))
@@ -558,8 +560,7 @@ namespace esphome
 
     void M5DialThermostat::on_max_temp(StringRef state)
     {
-      this->last_ha_update_ = millis();
-      this->comms_ok_ = true;
+      this->mark_ha_state_received_();
 
       float value = NAN;
       if (!this->parse_float_(state, &value))
@@ -572,8 +573,7 @@ namespace esphome
 
     void M5DialThermostat::on_temp_step(StringRef state)
     {
-      this->last_ha_update_ = millis();
-      this->comms_ok_ = true;
+      this->mark_ha_state_received_();
 
       float value = NAN;
       if (!this->parse_float_(state, &value))
@@ -921,6 +921,7 @@ namespace esphome
       this->needs_redraw_ = true;
       this->last_interaction_ = millis();
       this->last_ha_update_ = this->last_interaction_;
+      this->last_api_connected_ms_ = 0;
       this->last_redraw_ms_ = 0;
       this->last_no_connection_anim_ms_ = 0;
       this->reconnect_spinner_start_deg_ = 0.0f;
@@ -931,6 +932,7 @@ namespace esphome
       this->subscribe_ha_state_();
 #else
       this->comms_ok_ = true;
+      this->has_received_ha_state_ = true;
       this->current_temp_ = 25.0f;
       this->target_temp_ = 22.0f;
       this->local_setpoint_ = 22.0f;
@@ -944,6 +946,7 @@ namespace esphome
       this->min_temp_ = 15.0f;
       this->max_temp_ = 30.0f;
       this->temp_step_ = 0.5f;
+      this->last_api_connected_ms_ = this->last_interaction_;
       this->needs_redraw_ = true;
 #endif
     }
@@ -971,12 +974,19 @@ namespace esphome
       (void)now_ms;
       return false;
 #else
-      if (!should_mark_comms_offline(this->comms_ok_, now_ms, this->last_ha_update_,
-                                     this->comms_timeout_ms_))
+      const bool api_connected = this->is_connected();
+      if (api_connected)
+      {
+        this->last_api_connected_ms_ = now_ms;
+      }
+      const bool next_comms_ok = compute_comms_ok_from_api(
+          this->has_received_ha_state_, api_connected, now_ms,
+          this->last_api_connected_ms_, this->comms_timeout_ms_);
+      if (next_comms_ok == this->comms_ok_)
       {
         return false;
       }
-      this->comms_ok_ = false;
+      this->comms_ok_ = next_comms_ok;
       this->needs_redraw_ = true;
       return true;
 #endif

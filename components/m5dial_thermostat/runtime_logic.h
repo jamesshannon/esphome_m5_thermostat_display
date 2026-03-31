@@ -63,6 +63,11 @@ namespace esphome
                                              uint32_t last_anim_tick_ms,
                                              uint16_t anim_interval_ms);
 
+    // Computes comms state from API connection health and first-state bootstrap.
+    bool compute_comms_ok_from_api(bool has_received_ha_state, bool api_connected,
+                                   uint32_t now_ms, uint32_t last_api_connected_ms,
+                                   uint32_t comms_timeout_ms);
+
     // Computes the next wrapped index. Returns -1 on invalid inputs.
     int next_wrapped_index(int current_index, int count);
 

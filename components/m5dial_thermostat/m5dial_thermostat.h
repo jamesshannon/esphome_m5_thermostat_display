@@ -82,6 +82,7 @@ namespace esphome
       void on_min_temp(StringRef state);
       void on_max_temp(StringRef state);
       void on_temp_step(StringRef state);
+      void mark_ha_state_received_();
 
       void setup_input_pins_();
       static void encoder_isr_handler_(void *arg);
@@ -161,10 +162,12 @@ namespace esphome
 
       bool display_fahrenheit_{false};
       bool comms_ok_{false};
+      bool has_received_ha_state_{false};
       bool needs_redraw_{false};
       bool enable_sounds_{true};
 
       uint32_t last_ha_update_{0};
+      uint32_t last_api_connected_ms_{0};
       uint32_t last_interaction_{0};
       uint32_t last_button_ms_{0};
       uint32_t last_redraw_ms_{0};

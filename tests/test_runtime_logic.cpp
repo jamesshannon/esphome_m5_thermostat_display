@@ -69,6 +69,15 @@ static void test_should_tick_no_connection_animation() {
   assert(should_tick_no_connection_animation(false, 1100U, 1000U, 100U));
 }
 
+static void test_compute_comms_ok_from_api() {
+  assert(!compute_comms_ok_from_api(false, false, 5000U, 4000U, 30000U));
+  assert(!compute_comms_ok_from_api(false, true, 5000U, 5000U, 30000U));
+  assert(compute_comms_ok_from_api(true, true, 5000U, 5000U, 30000U));
+  assert(compute_comms_ok_from_api(true, false, 5100U, 5000U, 30000U));
+  assert(!compute_comms_ok_from_api(true, false, 36001U, 5000U, 30000U));
+  assert(!compute_comms_ok_from_api(true, false, 5000U, 0U, 30000U));
+}
+
 static void test_next_wrapped_index() {
   assert(next_wrapped_index(0, 4) == 1);
   assert(next_wrapped_index(3, 4) == 0);
@@ -138,6 +147,7 @@ int main() {
   test_should_mark_comms_offline();
   test_should_trigger_redraw();
   test_should_tick_no_connection_animation();
+  test_compute_comms_ok_from_api();
   test_next_wrapped_index();
   test_adjust_setpoint();
   test_backlight_mapping();

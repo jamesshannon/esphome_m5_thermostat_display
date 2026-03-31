@@ -130,6 +130,27 @@ namespace esphome
       return now_ms - last_anim_tick_ms >= anim_interval_ms;
     }
 
+    bool compute_comms_ok_from_api(bool has_received_ha_state, bool api_connected,
+                                   uint32_t now_ms, uint32_t last_api_connected_ms,
+                                   uint32_t comms_timeout_ms)
+    {
+      // Stay disconnected until we have confirmed at least one HA state update.
+      if (!has_received_ha_state)
+      {
+        return false;
+      }
+      if (api_connected)
+      {
+        return true;
+      }
+      if (last_api_connected_ms == 0 || now_ms < last_api_connected_ms)
+      {
+        return false;
+      }
+      // Grace period prevents short API blips from flickering reconnect UI.
+      return now_ms - last_api_connected_ms <= comms_timeout_ms;
+    }
+
     int next_wrapped_index(int current_index, int count)
     {
       if (count <= 0 || current_index < 0 || current_index >= count)
