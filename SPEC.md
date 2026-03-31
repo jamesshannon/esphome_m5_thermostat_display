@@ -205,6 +205,12 @@ The `target_temp_` callback additionally syncs
 `this->local_setpoint_` only if `this->local_setpoint_dirty_` is
 false (no pending unconfirmed local change).
 
+When a locally requested setpoint is echoed back from HA, accept the
+echo without snapping the local display value if the echo is within
+half of `target_temp_step` (with a tiny epsilon). This avoids UI
+jitter from backend quantization while still adopting real external
+changes.
+
 ### Parsing HVAC strings
 
 Use enums to avoid runtime heap allocation:
@@ -259,6 +265,8 @@ component class (use `this->` prefix for all access):
 | `target_temp_` | float | Confirmed setpoint from HA |
 | `local_setpoint_` | float | Local working setpoint |
 | `local_setpoint_dirty_` | bool | Awaiting HA confirmation |
+| `last_requested_setpoint_c_` | float | Last setpoint sent to HA |
+| `awaiting_setpoint_ack_` | bool | True after send until first echo |
 | `hvac_mode_` | HvacMode | Latest from HA |
 | `hvac_action_` | HvacAction | Latest from HA. Note that off and idle are functionally similar and dependent on the model of climate system |
 | `supported_modes_[]` | HvacMode[8] | From `hvac_modes` attr |

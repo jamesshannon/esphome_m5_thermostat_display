@@ -154,7 +154,9 @@ namespace esphome
       float current_temp_{NAN};
       float target_temp_{NAN};
       float local_setpoint_{NAN};
+      float last_requested_setpoint_c_{NAN};
       bool local_setpoint_dirty_{false};
+      bool awaiting_setpoint_ack_{false};
       HvacMode hvac_mode_{HvacMode::kOff};
       HvacAction hvac_action_{HvacAction::kUnknown};
 

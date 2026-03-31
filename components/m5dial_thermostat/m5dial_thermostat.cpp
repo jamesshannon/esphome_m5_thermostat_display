@@ -575,6 +575,8 @@ namespace esphome
       if (!this->parse_float_(state, &value))
       {
         this->target_temp_ = NAN;
+        this->awaiting_setpoint_ack_ = false;
+        this->last_requested_setpoint_c_ = NAN;
         if (!this->local_setpoint_dirty_)
         {
           this->local_setpoint_ = NAN;
@@ -591,7 +593,19 @@ namespace esphome
       this->target_temp_ = value;
       if (!this->local_setpoint_dirty_)
       {
-        this->local_setpoint_ = this->target_temp_;
+        if (this->awaiting_setpoint_ack_ &&
+            is_setpoint_ack_within_tolerance(this->last_requested_setpoint_c_,
+                                             this->target_temp_,
+                                             this->temp_step_))
+        {
+          // Keep local setpoint stable when HA echoes within one half-step.
+        }
+        else
+        {
+          this->local_setpoint_ = this->target_temp_;
+        }
+        this->awaiting_setpoint_ack_ = false;
+        this->last_requested_setpoint_c_ = NAN;
       }
       if (has_display_temp_changed(previous_local_setpoint,
                                    this->local_setpoint_,
@@ -665,6 +679,8 @@ namespace esphome
       this->call_homeassistant_service("climate.set_temperature", data);
 #endif
       this->local_setpoint_dirty_ = false;
+      this->awaiting_setpoint_ack_ = true;
+      this->last_requested_setpoint_c_ = this->local_setpoint_;
     }
 
     void M5DialThermostat::send_mode_to_ha_(HvacMode mode)
@@ -716,6 +732,8 @@ namespace esphome
 
       this->local_setpoint_ = result.new_setpoint_c;
       this->local_setpoint_dirty_ = true;
+      this->awaiting_setpoint_ack_ = false;
+      this->last_requested_setpoint_c_ = NAN;
       this->last_interaction_ = millis();
       this->set_display_brightness_(true);
       this->needs_redraw_ = true;

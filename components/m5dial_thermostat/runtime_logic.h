@@ -78,6 +78,12 @@ namespace esphome
                                          float max_temp_c,
                                          float temp_step_c, int direction);
 
+    // Returns true when backend setpoint echo is close enough to the requested
+    // setpoint to keep the local displayed value (quantization tolerance).
+    bool is_setpoint_ack_within_tolerance(float requested_setpoint_c,
+                                          float echoed_setpoint_c,
+                                          float temp_step_c);
+
     // Returns true when setpoint publish should run this cycle.
     bool should_send_setpoint(bool local_setpoint_dirty, float local_setpoint_c,
                               bool comms_ok);

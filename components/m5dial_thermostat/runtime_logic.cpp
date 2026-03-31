@@ -195,6 +195,19 @@ namespace esphome
       };
     }
 
+    bool is_setpoint_ack_within_tolerance(float requested_setpoint_c,
+                                          float echoed_setpoint_c,
+                                          float temp_step_c)
+    {
+      if (std::isnan(requested_setpoint_c) || std::isnan(echoed_setpoint_c))
+      {
+        return false;
+      }
+      const float step = temp_step_c > 0.0f ? temp_step_c : 0.5f;
+      const float tolerance = step * 0.5f + 1e-3f;
+      return std::fabs(requested_setpoint_c - echoed_setpoint_c) <= tolerance;
+    }
+
     bool should_send_setpoint(bool local_setpoint_dirty, float local_setpoint_c,
                               bool comms_ok)
     {

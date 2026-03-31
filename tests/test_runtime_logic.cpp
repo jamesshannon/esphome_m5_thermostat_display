@@ -140,6 +140,18 @@ static void test_should_send_setpoint() {
   assert(should_send_setpoint(true, 22.0f, true));
 }
 
+static void test_is_setpoint_ack_within_tolerance() {
+  assert(is_setpoint_ack_within_tolerance(20.0f, 20.24f, 0.5f));
+  assert(!is_setpoint_ack_within_tolerance(20.0f, 20.26f, 0.5f));
+
+  // Fallback step uses 0.5 C when attribute is missing/invalid.
+  assert(is_setpoint_ack_within_tolerance(20.0f, 20.24f, 0.0f));
+  assert(!is_setpoint_ack_within_tolerance(20.0f, 20.30f, -1.0f));
+
+  assert(!is_setpoint_ack_within_tolerance(NAN, 20.0f, 0.5f));
+  assert(!is_setpoint_ack_within_tolerance(20.0f, NAN, 0.5f));
+}
+
 int main() {
   test_consume_encoder_counts();
   test_tone_spec_and_retrigger();
@@ -153,5 +165,6 @@ int main() {
   test_backlight_mapping();
   test_has_display_temp_changed();
   test_should_send_setpoint();
+  test_is_setpoint_ack_within_tolerance();
   return 0;
 }
