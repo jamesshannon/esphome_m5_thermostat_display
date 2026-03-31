@@ -629,14 +629,8 @@ namespace esphome
       std::map<std::string, std::string> data;
       data["entity_id"] = this->entity_id_;
       data["temperature"] = std::to_string(this->local_setpoint_);
-      const char *mode_value = hvac_mode_to_service_string(this->hvac_mode_);
-      if (mode_value != nullptr)
-      {
-        data["hvac_mode"] = mode_value;
-      }
-      ESP_LOGD(TAG, "Sending setpoint: entity=%s temp=%.2f mode=%s",
-               this->entity_id_.c_str(), this->local_setpoint_,
-               mode_value == nullptr ? "(none)" : mode_value);
+      ESP_LOGD(TAG, "Sending setpoint: entity=%s temp=%.2f",
+               this->entity_id_.c_str(), this->local_setpoint_);
       this->call_homeassistant_service("climate.set_temperature", data);
 #endif
       this->local_setpoint_dirty_ = false;
